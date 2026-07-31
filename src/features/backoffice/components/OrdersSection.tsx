@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Order, PaymentType } from '../../../types';
-import { CheckCircle2, XCircle, Clock, Send, Phone, User, Calendar, MessageSquare, Trash2, CreditCard, Search, CalendarDays, Receipt } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Send, Phone, User, Calendar, MessageSquare, Trash2, CreditCard, Search, X, Eye, ShoppingBag } from 'lucide-react';
 import { generateApprovalWhatsAppUrl, generateRejectionWhatsAppUrl, formatPaymentMethodText } from '../../../utils/whatsapp';
 
 interface OrdersSectionProps {
@@ -24,6 +24,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [selectedPaymentTypes, setSelectedPaymentTypes] = useState<Record<string, PaymentType>>({});
+  const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
 
   const pendingCount = orders.filter(o => o.status === 'Pendiente').length;
   const approvedCount = orders.filter(o => o.status === 'Aprobado').length;
@@ -35,7 +36,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
       return false;
     }
 
-    // Filter by search term (Order Number, Customer Name, Customer Phone)
+    // Filter by search term
     if (searchTerm.trim().length > 0) {
       const term = searchTerm.trim().toLowerCase();
       const numMatch = (order.orderNumber || '').toLowerCase().includes(term);
@@ -68,6 +69,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
       const updatedOrder: Order = { ...order, paymentType: paymentTypeToUse, status: 'Aprobado' };
       const whatsappUrl = generateApprovalWhatsAppUrl(updatedOrder);
       window.open(whatsappUrl, '_blank');
+      setSelectedOrderForModal(null);
     } catch (err) {
       console.error('Error al aprobar orden:', err);
     } finally {
@@ -81,6 +83,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
       await onRejectOrder(order.id);
       const whatsappUrl = generateRejectionWhatsAppUrl(order);
       window.open(whatsappUrl, '_blank');
+      setSelectedOrderForModal(null);
     } catch (err) {
       console.error('Error al rechazar orden:', err);
     } finally {
@@ -95,7 +98,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
     }
 
     const confirmDelete = window.confirm(
-      `¿Deseas eliminar la solicitud N° ${order.orderNumber || order.id.slice(0, 8)} de ${order.customerName}?\n\nEsta acción realizará un borrado lógico y la ocultará del historial.`
+      `¿Deseas eliminar la solicitud N° ${order.orderNumber || order.id.slice(0, 8)} de ${order.customerName}?\n\nEsta acción realizará un borrado lógico, la ocultará del historial y devolverá el stock si estaba aprobada.`
     );
 
     if (!confirmDelete) return;
@@ -103,6 +106,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
     setProcessingId(order.id);
     try {
       await onDeleteOrder(order.id);
+      setSelectedOrderForModal(null);
     } catch (err) {
       console.error('Error al eliminar orden:', err);
     } finally {
@@ -112,7 +116,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Section Navigation Tabs */}
+      {/* Header controls & Filters */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div>
@@ -214,7 +218,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
         </div>
       </div>
 
-      {/* Orders List */}
+      {/* 2-COLUMN GRID OF COMPACT CARDS */}
       {isLoading ? (
         <div className="text-center py-12 bg-white rounded-3xl border border-slate-200">
           <Clock className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-2" />
@@ -229,180 +233,256 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredOrders.map(order => {
             const isPending = order.status === 'Pendiente';
             const isApproved = order.status === 'Aprobado';
             const isRejected = order.status === 'Rechazado';
-            const isBusy = processingId === order.id;
+            const totalItems = order.items ? order.items.reduce((sum, i) => sum + i.quantity, 0) : 0;
 
             return (
               <div
                 key={order.id}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4 transition-all hover:border-slate-300"
+                onClick={() => setSelectedOrderForModal(order)}
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500/50 p-4 transition-all cursor-pointer flex flex-col justify-between group space-y-3"
               >
-                {/* Header info */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-                      Solicitud N° {order.orderNumber || order.id.slice(0, 8)}
-                    </span>
-                    <span className="text-xs text-slate-400 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {new Date(order.createdAt).toLocaleString('es-NI', {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      })}
-                    </span>
-                  </div>
+                {/* Header: N° Solicitud & Status Badge */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                    Solicitud N° {order.orderNumber || order.id.slice(0, 8)}
+                  </span>
 
-                  {/* Status badge */}
                   <div>
                     {isPending && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                        <Clock className="w-3.5 h-3.5" /> Pendiente
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
+                        <Clock className="w-3 h-3" /> Pendiente
                       </span>
                     )}
                     {isApproved && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Aprobado & Stock Restado
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Aprobado
                       </span>
                     )}
                     {isRejected && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                        <XCircle className="w-3.5 h-3.5 text-rose-600" /> Rechazado
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
+                        <XCircle className="w-3 h-3 text-rose-600" /> Rechazado
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Customer Details & Items Table */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-                  {/* Customer Info Box */}
-                  <div className="md:col-span-5 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                    <div>
-                      <h4 className="text-xs font-bold uppercase text-slate-400 mb-1">Datos del Cliente:</h4>
-                      <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                        <User className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>{order.customerName}</span>
-                      </div>
-                      <div className="text-xs text-slate-600 font-medium flex items-center gap-2 mt-1">
-                        <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>{order.customerPhone}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-200/80">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <h4 className="text-xs font-bold uppercase text-slate-500 flex items-center gap-1">
-                          <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Modalidad de Pago:</span>
-                        </h4>
-                      </div>
-
-                      {/* Payment Type Selector (Admin can edit!) */}
-                      <select
-                        value={selectedPaymentTypes[order.id] || order.paymentType || 'contado'}
-                        onChange={e => handlePaymentTypeChange(order, e.target.value as PaymentType)}
-                        className="w-full text-xs font-bold bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                      >
-                        <option value="contado">💵 De Contado (C$ {order.total.toFixed(2)})</option>
-                        <option value="cuotas_2">🗓️ 2 Cuotas Quincenales (2x C$ {(order.total / 2).toFixed(2)})</option>
-                        <option value="cuotas_4">🗓️ 4 Cuotas Semanales (4x C$ {(order.total / 4).toFixed(2)})</option>
-                      </select>
-
-                      <p className="text-[11px] text-emerald-700 font-semibold mt-1.5 bg-emerald-50 p-2 rounded-lg border border-emerald-200/60">
-                        {formatPaymentMethodText(selectedPaymentTypes[order.id] || order.paymentType || 'contado', order.total)}
-                      </p>
-                    </div>
+                {/* Customer name & Phone */}
+                <div>
+                  <div className="text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="truncate">{order.customerName}</span>
                   </div>
-
-                  {/* Order Items Table */}
-                  <div className="md:col-span-7 space-y-2">
-                    <h4 className="text-xs font-bold uppercase text-slate-400">Detalle de Productos Solicitados:</h4>
-                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 divide-y divide-slate-200/60">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                              {item.quantity}x
-                            </span>
-                            <span className="font-semibold text-slate-900">{item.productName}</span>
-                          </div>
-                          <span className="font-extrabold text-slate-800">
-                            C$ {(item.price * item.quantity).toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex justify-between items-center pt-2 px-1 text-sm font-extrabold text-slate-900">
-                      <span>Total de la Solicitud:</span>
-                      <span className="text-emerald-600 text-lg">C$ {order.total.toFixed(2)}</span>
-                    </div>
+                  <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
+                    <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span>{order.customerPhone}</span>
                   </div>
                 </div>
 
-                {/* Action Controls */}
-                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                  <div className="text-xs text-slate-400">
-                    {isPending && 'Acción requerida: Aprueba o rechaza la solicitud para habilitar su eliminación o procesamiento.'}
-                    {isApproved && 'Orden aprobada y stock ajustado. Ya puedes eliminarla del historial si lo deseas.'}
-                    {isRejected && 'Orden rechazada. Puedes eliminarla del historial.'}
+                {/* Info Pills & Price */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                      <ShoppingBag className="w-3 h-3 text-slate-400" />
+                      <span>{totalItems} producto{totalItems !== 1 ? 's' : ''}</span>
+                    </div>
+                    <span className="inline-block text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      {order.paymentType === 'cuotas_2' && '2 Cuotas'}
+                      {order.paymentType === 'cuotas_4' && '4 Cuotas'}
+                      {(!order.paymentType || order.paymentType === 'contado') && 'Contado'}
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {isPending ? (
-                      <>
-                        <button
-                          disabled={isBusy}
-                          onClick={() => handleReject(order)}
-                          className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50"
-                        >
-                          <XCircle className="w-4 h-4" />
-                          <span>Rechazar</span>
-                        </button>
-
-                        <button
-                          disabled={isBusy}
-                          onClick={() => handleApprove(order)}
-                          className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>Aprobar y Notificar por WhatsApp</span>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            const url = isApproved 
-                              ? generateApprovalWhatsAppUrl(order)
-                              : generateRejectionWhatsAppUrl(order);
-                            window.open(url, '_blank');
-                          }}
-                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-                        >
-                          <Send className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Re-enviar WhatsApp</span>
-                        </button>
-
-                        <button
-                          disabled={isBusy}
-                          onClick={() => handleDelete(order)}
-                          className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
-                          title="Eliminar solicitud lógicamente"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                          <span>Eliminar Solicitud</span>
-                        </button>
-                      </>
-                    )}
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 block font-medium">Monto Total:</span>
+                    <span className="text-base font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
+                      C$ {order.total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
+
+                {/* Click action indicator */}
+                <button
+                  type="button"
+                  className="w-full py-2 bg-slate-50 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200 group-hover:border-emerald-600"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Ver Detalle y Gestionar</span>
+                </button>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* DETAIL AND ACTION MODAL FOR A SELECTED ORDER */}
+      {selectedOrderForModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-slate-900 text-white p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs font-extrabold text-emerald-400 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
+                  N° {selectedOrderForModal.orderNumber || selectedOrderForModal.id.slice(0, 8)}
+                </span>
+                <span className="text-xs text-slate-300 font-medium hidden sm:inline">
+                  {new Date(selectedOrderForModal.createdAt).toLocaleString('es-NI', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedOrderForModal(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content Scrollable */}
+            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+              {/* Status Badge Banner */}
+              <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <span className="text-xs font-bold text-slate-600">Estado Actual de la Solicitud:</span>
+                <div>
+                  {selectedOrderForModal.status === 'Pendiente' && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
+                      <Clock className="w-3.5 h-3.5" /> Pendiente
+                    </span>
+                  )}
+                  {selectedOrderForModal.status === 'Aprobado' && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Aprobado & Stock Restado
+                    </span>
+                  )}
+                  {selectedOrderForModal.status === 'Rechazado' && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
+                      <XCircle className="w-3.5 h-3.5 text-rose-600" /> Rechazado
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Customer Box & Payment Method selector */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Datos del Cliente:</h4>
+                  <div className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <User className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{selectedOrderForModal.customerName}</span>
+                  </div>
+                  <div className="text-xs text-slate-600 font-medium flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{selectedOrderForModal.customerPhone}</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Modalidad de Pago:</h4>
+                  <select
+                    value={selectedPaymentTypes[selectedOrderForModal.id] || selectedOrderForModal.paymentType || 'contado'}
+                    onChange={e => handlePaymentTypeChange(selectedOrderForModal, e.target.value as PaymentType)}
+                    className="w-full text-xs font-bold bg-white border border-slate-300 rounded-xl p-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  >
+                    <option value="contado">💵 De Contado (C$ {selectedOrderForModal.total.toFixed(2)})</option>
+                    <option value="cuotas_2">🗓️ 2 Cuotas Quincenales (2x C$ {(selectedOrderForModal.total / 2).toFixed(2)})</option>
+                    <option value="cuotas_4">🗓️ 4 Cuotas Semanales (4x C$ {(selectedOrderForModal.total / 4).toFixed(2)})</option>
+                  </select>
+                  <p className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 p-2 rounded-lg border border-emerald-200/60">
+                    {formatPaymentMethodText(selectedPaymentTypes[selectedOrderForModal.id] || selectedOrderForModal.paymentType || 'contado', selectedOrderForModal.total)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Order Items Table */}
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Detalle de Productos Solicitados:</h4>
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 divide-y divide-slate-200/80">
+                  {selectedOrderForModal.items.map((item, idx) => (
+                    <div key={idx} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2.5">
+                        <span className="font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-md">
+                          {item.quantity}x
+                        </span>
+                        <span className="font-semibold text-slate-900">{item.productName}</span>
+                      </div>
+                      <span className="font-extrabold text-slate-900">
+                        C$ {(item.price * item.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center pt-2 px-1 text-sm font-extrabold text-slate-900">
+                  <span>Total de la Solicitud:</span>
+                  <span className="text-emerald-600 text-xl font-black">C$ {selectedOrderForModal.total.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <button
+                onClick={() => setSelectedOrderForModal(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold transition-all"
+              >
+                Cerrar
+              </button>
+
+              <div className="flex items-center gap-2">
+                {selectedOrderForModal.status === 'Pendiente' ? (
+                  <>
+                    <button
+                      disabled={processingId === selectedOrderForModal.id}
+                      onClick={() => handleReject(selectedOrderForModal)}
+                      className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      <span>Rechazar</span>
+                    </button>
+
+                    <button
+                      disabled={processingId === selectedOrderForModal.id}
+                      onClick={() => handleApprove(selectedOrderForModal)}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Aprobar y Notificar</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        const url = selectedOrderForModal.status === 'Aprobado' 
+                          ? generateApprovalWhatsAppUrl(selectedOrderForModal)
+                          : generateRejectionWhatsAppUrl(selectedOrderForModal);
+                        window.open(url, '_blank');
+                      }}
+                      className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                    >
+                      <Send className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Re-enviar WhatsApp</span>
+                    </button>
+
+                    <button
+                      disabled={processingId === selectedOrderForModal.id}
+                      onClick={() => handleDelete(selectedOrderForModal)}
+                      className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50 active:scale-95 shadow-md shadow-rose-600/20"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Eliminar Solicitud</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

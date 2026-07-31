@@ -40,7 +40,7 @@ const CATEGORY_COLORS = [
 
 export const ReportsSection: React.FC<ReportsSectionProps> = ({ orders, products }) => {
   const [activeReportTab, setActiveReportTab] = useState<
-    'stock_category' | 'approved_sales' | 'paid_orders' | 'top_products' | 'frequent_customers'
+    'stock_category' | 'approved_sales' | 'paid_orders' | 'frequent_customers'
   >('stock_category');
 
   // Date range state for reports 2 and 3
@@ -276,18 +276,6 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ orders, products
         >
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>Solicitudes Pagadas</span>
-        </button>
-
-        <button
-          onClick={() => setActiveReportTab('top_products')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 border ${
-            activeReportTab === 'top_products'
-              ? 'bg-slate-900 text-white border-slate-900 shadow-md'
-              : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4 text-emerald-400" />
-          <span>Top 10 Más Vendidos</span>
         </button>
 
         <button
@@ -623,91 +611,7 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ orders, products
         </div>
       )}
 
-      {/* ---------------------------------------------------- */}
-      {/* 4. TOP 10 MOST SOLD PRODUCTS (BarChart) */}
-      {/* ---------------------------------------------------- */}
-      {activeReportTab === 'top_products' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-          <div className="border-b border-slate-100 pb-4">
-            <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-emerald-600" />
-              <span>Top 10 Productos Más Vendidos</span>
-            </h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Productos con mayor volumen de unidades vendidas en solicitudes aprobadas.
-            </p>
-          </div>
 
-          {top10ProductsData.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-xs">
-              No se han registrado ventas aprobadas para generar el ranking de productos.
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="h-96 min-h-[380px] w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    layout="vertical"
-                    data={top10ProductsData}
-                    margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
-                  >
-                    <XAxis type="number" tick={{ fontSize: 11 }} />
-                    <YAxis
-                      type="category"
-                      dataKey="title"
-                      width={190}
-                      tick={{ fontSize: 11, fontWeight: 600 }}
-                      tickFormatter={(val: string) => val.length > 28 ? val.slice(0, 28) + '...' : val}
-                    />
-                    <Tooltip
-                      formatter={(val: any, name: any, item: any) => [
-                        `${val} unidades (C$ ${item.payload.totalRevenue.toFixed(2)})`,
-                        'Unidades Vendidas'
-                      ]}
-                    />
-                    <Bar
-                      dataKey="totalQuantity"
-                      fill="#059669"
-                      radius={[0, 8, 8, 0]}
-                      barSize={20}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Table Ranking */}
-              <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-900 text-white uppercase text-[10px] tracking-wider font-extrabold">
-                    <tr>
-                      <th className="p-3.5 text-center w-12">#</th>
-                      <th className="p-3.5">Nombre del Producto</th>
-                      <th className="p-3.5 text-right">Unidades Vendidas</th>
-                      <th className="p-3.5 text-right">Ingresos Generados (C$)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white font-medium">
-                    {top10ProductsData.map((prod, idx) => (
-                      <tr key={prod.title} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-3.5 text-center font-extrabold text-slate-400">
-                          {idx + 1}
-                        </td>
-                        <td className="p-3.5 font-bold text-slate-900">{prod.title}</td>
-                        <td className="p-3.5 text-right font-black text-slate-900">
-                          {prod.totalQuantity} unid.
-                        </td>
-                        <td className="p-3.5 text-right font-black text-emerald-600">
-                          C$ {prod.totalRevenue.toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ---------------------------------------------------- */}
       {/* 5. FREQUENT CUSTOMERS */}

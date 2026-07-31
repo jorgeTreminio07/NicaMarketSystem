@@ -849,6 +849,21 @@ async function startServer() {
       return res.status(400).json(errRes);
     }
 
+    // If the order was approved, restore item quantities back to product stock!
+    if (order.status === 'Aprobado' && order.items) {
+      for (const item of order.items) {
+        const prod = products.find(p => p.id === item.productId);
+        if (prod) {
+          prod.stock = Number(prod.stock) + Number(item.quantity);
+          try {
+            await supabase.from('products').update({ stock: prod.stock }).eq('id', prod.id);
+          } catch (e) {
+            console.log('Error devolviendo stock a Supabase:', e);
+          }
+        }
+      }
+    }
+
     order.isDeleted = true;
     orders = orders.filter(o => o.id !== id);
 
