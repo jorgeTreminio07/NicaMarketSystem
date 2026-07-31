@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, FormEvent } from 'react';
-import { Product, Order, CartItem, PaymentType } from './types';
-import { productRepository, orderRepository } from './infrastructure/api/apiClient';
+import { Product, Order, CartItem, PaymentType, StoreSettings, BackofficeUser } from './types';
+import { productRepository, orderRepository, getStoreSettings, loginUser } from './infrastructure/api/apiClient';
 import {
   GetProductsUseCase,
   AddProductUseCase,
@@ -21,7 +21,7 @@ import { NotificationBanner, ToastMessage } from './components/NotificationBanne
 import { StoreView } from './features/store/StoreView';
 import { CartView } from './features/cart/CartView';
 import { BackofficeView } from './features/backoffice/BackofficeView';
-import { Lock, ShieldCheck, X, CheckCircle2 } from 'lucide-react';
+import { Lock, ShieldCheck, X, CheckCircle2, Mail, Loader2 } from 'lucide-react';
 
 // Instantiate Clean Architecture Use Cases
 const getProductsUseCase = new GetProductsUseCase(productRepository);
@@ -35,9 +35,9 @@ const processOrderStatusUseCase = new ProcessOrderStatusUseCase(orderRepository)
 const deleteOrderUseCase = new DeleteOrderUseCase(orderRepository);
 
 export default function App() {
-  const ADMIN_PASSWORD = '850012cf-2945-4293-a2d5-6b2956d15cfb';
-
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<BackofficeUser | null>(null);
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | undefined>(undefined);
 
   const [activeTab, setActiveTab] = useState<'store' | 'cart' | 'backoffice'>(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -65,8 +65,13 @@ export default function App() {
     return urlParams.get('admin') === 'true' || window.location.hash === '#backoffice';
   });
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
-  const [adminPinInput, setAdminPinInput] = useState<string>('');
-  const [pinError, setPinError] = useState<string>('');
+
+  // Login form state
+  const [loginEmail, setLoginEmail] = useState<string>('admin@nombredelatienda.com');
+  const [loginPassword, setLoginPassword] = useState<string>('850012cf-2945-4293-a2d5-6b2956d15cfb');
+  const [loginError, setLoginError] = useState<string>('');
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+
   const [supabaseStatus, setSupabaseStatus] = useState<{ connected: boolean; message: string } | null>(null);
 
   // Toast notification trigger
@@ -82,7 +87,7 @@ export default function App() {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  // Check Supabase connection health
+  // Check Supabase connection health & load initial store settings
   useEffect(() => {
     fetch('/api/supabase-status')
       .then(res => res.json())
@@ -96,6 +101,13 @@ export default function App() {
       .catch(() => {
         setSupabaseStatus({ connected: false, message: 'API responded in fallback mode' });
       });
+
+    // Load store settings
+    getStoreSettings()
+      .then(settings => {
+        if (settings) setStoreSettings(settings);
+      })
+      .catch(err => console.error('Error cargando configuración de tienda:', err));
   }, []);
 
   // Sync cart items to localStorage
@@ -111,12 +123,14 @@ export default function App() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [prods, ords] = await Promise.all([
+      const [prods, ords, settings] = await Promise.all([
         getProductsUseCase.execute(),
         getOrdersUseCase.execute(),
+        getStoreSettings().catch(() => undefined),
       ]);
       setProducts(prods);
       setOrders(ords);
+      if (settings) setStoreSettings(settings);
     } catch (err) {
       console.error('Error cargando datos:', err);
       addToast('error', 'Error de conexión', 'No se pudieron sincronizar los datos con el servidor.');
@@ -129,26 +143,40 @@ export default function App() {
     loadData();
   }, [loadData]);
 
-  // Handle Admin Access Unlock
-  const handleAdminLogin = (e: FormEvent) => {
+  // Handle Admin Access Unlock via encrypted Supabase user verification
+  const handleAdminLogin = async (e: FormEvent) => {
     e.preventDefault();
-    const pin = adminPinInput.trim();
-    if (pin === ADMIN_PASSWORD) {
-      setIsAdmin(true);
-      setShowAdminModal(false);
-      setActiveTab('backoffice');
-      setAdminPinInput('');
-      setPinError('');
-      addToast('success', 'Proyecto Backoffice Conectado', 'Acceso de administrador concedido.');
-    } else {
-      setPinError('Contraseña incorrecta. Ingrese la clave de administrador.');
+    if (!loginEmail.trim() || !loginPassword.trim()) {
+      setLoginError('Ingrese usuario y contraseña.');
+      return;
+    }
+
+    setIsLoggingIn(true);
+    setLoginError('');
+
+    try {
+      const user = await loginUser(loginEmail.trim(), loginPassword.trim());
+
+      if (user) {
+        setIsAdmin(true);
+        setCurrentUser(user);
+        setShowAdminModal(false);
+        setActiveTab('backoffice');
+        setLoginError('');
+        addToast('success', 'Sesión Iniciada', `Bienvenido al Backoffice, ${user.email}`);
+      }
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : 'Error al autenticar usuario.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   const handleExitAdmin = () => {
     setIsAdmin(false);
+    setCurrentUser(null);
     setActiveTab('store');
-    addToast('info', 'Vista de Cliente Activada', 'Has regresado a la Tienda pública.');
+    addToast('info', 'Vista de Cliente Activada', 'Has cerrado la sesión de administración.');
   };
 
   // Cart operations
@@ -350,6 +378,7 @@ export default function App() {
             onRefresh={loadData}
             onAddToCart={handleAddToCart}
             cartItems={cartItems}
+            storeSettings={storeSettings}
           />
         )}
 
@@ -361,24 +390,25 @@ export default function App() {
             onClearCart={handleClearCart}
             onCheckout={handleCheckout}
             onGoBackToStore={() => setActiveTab('store')}
+            storeWhatsappNumber={storeSettings?.whatsappNumber}
           />
         )}
 
         {activeTab === 'backoffice' && (
           !isAdmin ? (
-            <div className="max-w-md mx-auto my-16 p-8 bg-slate-900 border border-slate-800 rounded-2xl text-center text-slate-100 shadow-xl space-y-4">
+            <div className="max-w-md mx-auto my-16 p-8 bg-slate-900 border border-slate-800 rounded-3xl text-center text-slate-100 shadow-xl space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 mx-auto flex items-center justify-center">
                 <Lock className="w-7 h-7" />
               </div>
               <h2 className="text-xl font-bold text-white">Acceso Protegido al Backoffice</h2>
-              <p className="text-sm text-slate-400">
-                Se requiere contraseña de administrador para ingresar a la gestión del sistema.
+              <p className="text-xs text-slate-400">
+                Se requiere iniciar sesión con usuario y contraseña registrados en Supabase.
               </p>
               <button
                 onClick={() => setShowAdminModal(true)}
-                className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-lg transition-all"
+                className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg transition-all text-xs"
               >
-                Ingresar Contraseña de Administrador
+                Iniciar Sesión en Backoffice
               </button>
             </div>
           ) : (
@@ -395,6 +425,11 @@ export default function App() {
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                       <span className="font-semibold">Estado de Base de Datos Supabase:</span>
                       <span>{supabaseStatus.message}</span>
+                      {currentUser && (
+                        <span className="ml-2 font-mono text-emerald-400">
+                          (Usuario: {currentUser.email})
+                        </span>
+                      )}
                     </div>
                     <span className="font-mono text-[10px] opacity-80">https://xjiwhdnrxpsbbegqjicp.supabase.co</span>
                   </div>
@@ -414,6 +449,7 @@ export default function App() {
                 onAddProduct={handleAddProduct}
                 onRefresh={loadData}
                 isLoading={isLoading}
+                onStoreSettingsUpdated={(updated) => setStoreSettings(updated)}
               />
             </div>
           )
@@ -436,58 +472,86 @@ export default function App() {
 
       {/* Admin Access Modal */}
       {showAdminModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 text-slate-100 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-8 text-slate-100 shadow-2xl relative">
             <button
               onClick={() => setShowAdminModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-all"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                <Lock className="w-5 h-5" />
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <Lock className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Acceso Proyecto Backoffice</h3>
-                <p className="text-xs text-slate-400">Panel de Administración de Inventarios y Solicitudes</p>
+                <h3 className="text-lg font-extrabold text-white">Acceso al Backoffice</h3>
+                <p className="text-xs text-slate-400">Autenticación de usuarios vía Supabase</p>
               </div>
             </div>
 
+            {loginError && (
+              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-2xl text-xs font-bold">
+                {loginError}
+              </div>
+            )}
+
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Clave de Administrador
+                <label className="block text-xs font-bold uppercase text-slate-400 mb-1 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Usuario (Correo Electrónico)</span>
+                </label>
+                <input
+                  type="email"
+                  value={loginEmail}
+                  onChange={e => setLoginEmail(e.target.value)}
+                  placeholder="admin@nombredelatienda.com"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all font-medium"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-400 mb-1 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Contraseña</span>
                 </label>
                 <input
                   type="password"
-                  value={adminPinInput}
-                  onChange={e => setAdminPinInput(e.target.value)}
-                  placeholder="Ingrese su clave de acceso"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 font-mono"
-                  autoFocus
+                  value={loginPassword}
+                  onChange={e => setLoginPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all font-mono text-sm"
+                  required
                 />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  El PIN es requerido para desbloquear la gestión de inventario y pedidos.
-                </p>
-                {pinError && <p className="text-xs text-rose-400 mt-1.5 font-medium">{pinError}</p>}
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-3">
                 <button
                   type="button"
                   onClick={() => setShowAdminModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+                  className="px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all"
+                  disabled={isLoggingIn}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-50"
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Ingresar al Backoffice</span>
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Verificando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Ingresar al Backoffice</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

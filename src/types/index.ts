@@ -62,3 +62,19 @@ export interface CartItem {
 }
 
 export type CategoryFilter = string;
+
+export interface StoreSettings {
+  id?: string;
+  name: string;
+  description: string;
+  logoUrl: string;
+  whatsappNumber: string;
+  updatedAt?: string;
+}
+
+export interface BackofficeUser {
+  id: string;
+  email: string;
+  role: 'admin' | 'staff';
+  createdAt: string;
+}

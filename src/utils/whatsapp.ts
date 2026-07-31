@@ -30,7 +30,8 @@ export function generateOrderWhatsAppUrl(
   items: CartItem[],
   total: number,
   orderNumber?: string,
-  paymentType: PaymentType = 'contado'
+  paymentType: PaymentType = 'contado',
+  targetPhoneNumber?: string
 ): string {
   let text = `*¡NUEVO PEDIDO DE COMPRA!* 🛍️\n\n`;
   if (orderNumber) {
@@ -49,7 +50,8 @@ export function generateOrderWhatsAppUrl(
   text += `\n💰 *Total a pagar:* C$ ${total.toFixed(2)}\n`;
   text += `\nQuedo a la espera de la confirmación de mi pedido. ¡Muchas gracias!`;
 
-  return `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+  const destPhone = sanitizePhoneNumber(targetPhoneNumber || STORE_WHATSAPP_NUMBER);
+  return `https://wa.me/${destPhone}?text=${encodeURIComponent(text)}`;
 }
 
 export function generateApprovalWhatsAppUrl(order: Order): string {

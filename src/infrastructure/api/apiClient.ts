@@ -139,8 +139,75 @@ export class ApiOrderRepository implements IOrderRepository {
   }
 }
 
-export async function seedDatabase(): Promise<{ success: boolean; message: string }> {
-  const res = await fetch('/api/seed', { method: 'POST' });
+export async function getStoreSettings(): Promise<import('../../types').StoreSettings> {
+  const res = await fetch('/api/store-settings');
+  if (!res.ok) throw new Error('Error al obtener la configuración de la tienda');
+  return res.json();
+}
+
+export async function updateStoreSettings(settings: Partial<import('../../types').StoreSettings>): Promise<import('../../types').StoreSettings> {
+  const res = await fetch('/api/store-settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al actualizar la configuración de la tienda');
+  }
+  return res.json();
+}
+
+export async function loginUser(email: string, password: string): Promise<import('../../types').BackofficeUser> {
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al iniciar sesión');
+  }
+  const data = await res.json();
+  return data.user;
+}
+
+export async function getUsers(): Promise<import('../../types').BackofficeUser[]> {
+  const res = await fetch('/api/users');
+  if (!res.ok) throw new Error('Error al obtener los usuarios');
+  return res.json();
+}
+
+export async function createUser(user: { email: string; password: string; role?: string }): Promise<import('../../types').BackofficeUser> {
+  const res = await fetch('/api/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(user),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al crear el usuario');
+  }
+  return res.json();
+}
+
+export async function deleteUser(id: string): Promise<boolean> {
+  const res = await fetch(`/api/users/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al eliminar el usuario');
+  }
+  return true;
+}
+
+export async function seedDatabase(adminCredentials?: { email: string; password: string }): Promise<{ success: boolean; message: string }> {
+  const res = await fetch('/api/seed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(adminCredentials || {}),
+  });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Error al poblar la base de datos');
@@ -148,8 +215,12 @@ export async function seedDatabase(): Promise<{ success: boolean; message: strin
   return res.json();
 }
 
-export async function clearDatabase(): Promise<{ success: boolean; message: string }> {
-  const res = await fetch('/api/clear-all', { method: 'POST' });
+export async function clearDatabase(adminCredentials?: { email: string; password: string }): Promise<{ success: boolean; message: string }> {
+  const res = await fetch('/api/clear-all', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(adminCredentials || {}),
+  });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Error al vaciar la base de datos');
@@ -159,3 +230,4 @@ export async function clearDatabase(): Promise<{ success: boolean; message: stri
 
 export const productRepository = new ApiProductRepository();
 export const orderRepository = new ApiOrderRepository();
+

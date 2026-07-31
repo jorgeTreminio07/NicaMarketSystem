@@ -3,6 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
+import crypto from 'crypto';
 import { INITIAL_PRODUCTS } from './src/data/initialProducts.js';
 
 interface Product {
@@ -42,6 +43,67 @@ interface Order {
   createdAt: string;
   updatedAt?: string;
   isDeleted?: boolean;
+}
+
+interface StoreSettings {
+  id: string;
+  name: string;
+  description: string;
+  logoUrl: string;
+  whatsappNumber: string;
+  updatedAt?: string;
+}
+
+interface UserRow {
+  id: string;
+  email: string;
+  password_hash: string;
+  role: string;
+  created_at: string;
+}
+
+// Password Hashing Helper
+function hashPassword(password: string): string {
+  const salt = 'nuestra_tienda_salt_2026';
+  return crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+}
+
+const DEFAULT_ADMIN_EMAIL = 'admin@nombredelatienda.com';
+const DEFAULT_ADMIN_PASS = '850012cf-2945-4293-a2d5-6b2956d15cfb';
+
+// Initial Store Settings
+let storeSettings: StoreSettings = {
+  id: 'default',
+  name: 'NicaMarket',
+  description: 'Explora nuestra tienda en línea. Todos los productos están organizados alfabéticamente. Filtra por categoría, busca lo que deseas e ingresa tu pedido directo por WhatsApp.',
+  logoUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+  whatsappNumber: '50589098184',
+  updatedAt: new Date().toISOString()
+};
+
+// Initial Users
+let users: UserRow[] = [
+  {
+    id: 'u0000000-0000-4000-8000-000000000001',
+    email: DEFAULT_ADMIN_EMAIL,
+    password_hash: hashPassword(DEFAULT_ADMIN_PASS),
+    role: 'admin',
+    created_at: new Date().toISOString()
+  }
+];
+
+function verifyAdminCredentials(email?: string, password?: string): boolean {
+  if (!email || !password) return false;
+  const cleanedEmail = email.trim().toLowerCase();
+  const inputHash = hashPassword(password.trim());
+
+  const user = users.find(u => u.email.toLowerCase() === cleanedEmail);
+  if (!user) return false;
+
+  const isPasswordValid = user.password_hash === inputHash;
+  const isAdminRole = user.role === 'admin' || user.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase();
+
+  return isPasswordValid && isAdminRole;
 }
 
 // Helper for generating unique 10-digit Solicitud ID
@@ -324,7 +386,64 @@ async function loadDataFromSupabase() {
     } else {
       orders = [];
     }
-    console.log(`Carga inicial desde Supabase completada: ${products.length} productos, ${orders.length} órdenes.`);
+
+    // Load Store Settings
+    const { data: setArr, error: setErr } = await supabase.from('store_settings').select('*').limit(1);
+    if (!setErr && setArr && setArr.length > 0) {
+      const row = setArr[0];
+      storeSettings = {
+        id: row.id || 'default',
+        name: row.name && row.name !== 'Nuestra Tienda' ? row.name : 'NicaMarket',
+        description: row.description || '',
+        logoUrl: row.logo_url || row.logoUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+        whatsappNumber: row.whatsapp_number || row.whatsappNumber || '50589098184',
+        updatedAt: row.updated_at || new Date().toISOString()
+      };
+    } else {
+      // Upsert default settings to Supabase
+      await supabase.from('store_settings').upsert([{
+        id: 'default',
+        name: storeSettings.name,
+        description: storeSettings.description,
+        logo_url: storeSettings.logoUrl,
+        whatsapp_number: storeSettings.whatsappNumber,
+        updated_at: storeSettings.updatedAt
+      }]);
+    }
+
+    // Load Users
+    const { data: usrArr, error: usrErr } = await supabase.from('users').select('*');
+    if (!usrErr && usrArr && usrArr.length > 0) {
+      users = usrArr.map((u: any) => ({
+        id: String(u.id),
+        email: String(u.email),
+        password_hash: String(u.password_hash || u.passwordHash),
+        role: String(u.role || 'staff'),
+        created_at: String(u.created_at || u.createdAt || new Date().toISOString())
+      }));
+    }
+
+    // Ensure default admin user exists
+    const hasAdmin = users.some(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase());
+    if (!hasAdmin) {
+      const adminUser: UserRow = {
+        id: 'u0000000-0000-4000-8000-000000000001',
+        email: DEFAULT_ADMIN_EMAIL,
+        password_hash: hashPassword(DEFAULT_ADMIN_PASS),
+        role: 'admin',
+        created_at: new Date().toISOString()
+      };
+      users.unshift(adminUser);
+      await supabase.from('users').upsert([{
+        id: adminUser.id,
+        email: adminUser.email,
+        password_hash: adminUser.password_hash,
+        role: adminUser.role,
+        created_at: adminUser.created_at
+      }]);
+    }
+
+    console.log(`Carga inicial desde Supabase completada: ${products.length} productos, ${orders.length} órdenes, ${users.length} usuarios.`);
   } catch (err) {
     console.log('Aviso al cargar datos desde Supabase:', err);
   }
@@ -878,23 +997,163 @@ async function startServer() {
     res.json(successRes);
   });
 
-  // Reset/seed data to initial state in Supabase
-  app.post('/api/reset', async (req, res) => {
-    try {
-      await seedSupabase();
-      res.json({ success: true, message: 'Base de datos de Supabase reiniciada y poblada exitosamente.' });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al reiniciar datos';
-      res.status(500).json({ success: false, error: msg });
-    }
+  // === STORE SETTINGS ENDPOINTS ===
+  app.get('/api/store-settings', async (req, res) => {
+    res.json(storeSettings);
   });
 
+  app.put('/api/store-settings', async (req, res) => {
+    const { name, description, logoUrl, whatsappNumber } = req.body;
+    storeSettings = {
+      ...storeSettings,
+      name: name !== undefined ? String(name).trim() : storeSettings.name,
+      description: description !== undefined ? String(description).trim() : storeSettings.description,
+      logoUrl: logoUrl !== undefined ? String(logoUrl).trim() : storeSettings.logoUrl,
+      whatsappNumber: whatsappNumber !== undefined ? String(whatsappNumber).trim() : storeSettings.whatsappNumber,
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      await supabase.from('store_settings').upsert([{
+        id: 'default',
+        name: storeSettings.name,
+        description: storeSettings.description,
+        logo_url: storeSettings.logoUrl,
+        whatsapp_number: storeSettings.whatsappNumber,
+        updated_at: storeSettings.updatedAt
+      }]);
+    } catch (err) {
+      console.log('Error actualizando store_settings en Supabase:', err);
+    }
+
+    logApiCall('UPDATE_STORE_SETTINGS', '/api/store-settings', 'PUT', req.body, storeSettings, 200);
+    res.json(storeSettings);
+  });
+
+  // === AUTHENTICATION & USERS ENDPOINTS ===
+  app.post('/api/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Usuario (email) y contraseña son requeridos.' });
+    }
+
+    const cleanedEmail = String(email).trim().toLowerCase();
+    const inputHash = hashPassword(String(password).trim());
+
+    const user = users.find(u => u.email.toLowerCase() === cleanedEmail);
+    if (!user || user.password_hash !== inputHash) {
+      return res.status(401).json({ error: 'Credenciales inválidas. Verifique su correo y contraseña.' });
+    }
+
+    const responseUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      createdAt: user.created_at
+    };
+
+    logApiCall('USER_LOGIN', '/api/auth/login', 'POST', { email: cleanedEmail }, responseUser, 200);
+    res.json({
+      success: true,
+      message: 'Inicio de sesión exitoso.',
+      user: responseUser
+    });
+  });
+
+  app.get('/api/users', async (req, res) => {
+    const safeUsers = users.map(u => ({
+      id: u.id,
+      email: u.email,
+      role: u.role,
+      createdAt: u.created_at
+    }));
+    res.json(safeUsers);
+  });
+
+  app.post('/api/users', async (req, res) => {
+    const { email, password, role } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email y contraseña son obligatorios.' });
+    }
+
+    const cleanedEmail = String(email).trim().toLowerCase();
+
+    if (users.some(u => u.email.toLowerCase() === cleanedEmail)) {
+      return res.status(400).json({ error: 'El correo electrónico ya está registrado.' });
+    }
+
+    const newUser: UserRow = {
+      id: randomUUID(),
+      email: cleanedEmail,
+      password_hash: hashPassword(String(password).trim()),
+      role: role === 'admin' ? 'admin' : 'staff',
+      created_at: new Date().toISOString()
+    };
+
+    users.push(newUser);
+
+    try {
+      await supabase.from('users').insert([{
+        id: newUser.id,
+        email: newUser.email,
+        password_hash: newUser.password_hash,
+        role: newUser.role,
+        created_at: newUser.created_at
+      }]);
+    } catch (err) {
+      console.log('Error insertando usuario en Supabase:', err);
+    }
+
+    const safeUser = {
+      id: newUser.id,
+      email: newUser.email,
+      role: newUser.role,
+      createdAt: newUser.created_at
+    };
+
+    logApiCall('CREATE_USER', '/api/users', 'POST', { email: cleanedEmail, role: newUser.role }, safeUser, 201);
+    res.status(201).json(safeUser);
+  });
+
+  app.delete('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const user = users.find(u => u.id === id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    if (user.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase()) {
+      return res.status(400).json({ error: 'No se puede eliminar el usuario administrador principal.' });
+    }
+
+    users = users.filter(u => u.id !== id);
+
+    try {
+      await supabase.from('users').delete().eq('id', id);
+    } catch (err) {
+      console.log('Error eliminando usuario en Supabase:', err);
+    }
+
+    res.json({ success: true, message: 'Usuario eliminado correctamente.' });
+  });
+
+  // === ADMIN PROTECTED SEED & CLEAR DATABASE ===
   app.post('/api/seed', async (req, res) => {
+    const { email, password } = req.body || {};
+
+    if (!verifyAdminCredentials(email, password)) {
+      return res.status(403).json({
+        error: 'Acceso denegado. Se requieren credenciales válidas del usuario administrador (admin@nombredelatienda.com) para poblar la base de datos.'
+      });
+    }
+
     try {
       await seedSupabase();
       res.json({
         success: true,
-        message: 'Base de datos poblada en Supabase.',
+        message: 'Base de datos poblada en Supabase correctamente por el usuario administrador.',
         productsCount: products.length,
         ordersCount: orders.length
       });
@@ -905,11 +1164,19 @@ async function startServer() {
   });
 
   app.post('/api/clear-all', async (req, res) => {
+    const { email, password } = req.body || {};
+
+    if (!verifyAdminCredentials(email, password)) {
+      return res.status(403).json({
+        error: 'Acceso denegado. Se requieren credenciales válidas del usuario administrador (admin@nombredelatienda.com) para vaciar la base de datos.'
+      });
+    }
+
     try {
       await clearSupabase();
       res.json({
         success: true,
-        message: 'Toda la información de la base de datos ha sido eliminada exitosamente.'
+        message: 'Toda la información de la base de datos ha sido eliminada por el usuario administrador.'
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al vaciar datos';

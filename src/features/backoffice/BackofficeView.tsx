@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Product, Order, PaymentType } from '../../types';
+import { Product, Order, PaymentType, StoreSettings } from '../../types';
 import { OrdersSection } from './components/OrdersSection';
 import { StockManagementSection } from './components/StockManagementSection';
 import { AddProductSection } from './components/AddProductSection';
 import { CreditManagementSection } from './components/CreditManagementSection';
 import { ReportsSection } from './components/ReportsSection';
-import { Inbox, Layers, PlusCircle, ShieldCheck, RefreshCw, Database, CreditCard, BarChart3, Trash2, Sparkles, Loader2 } from 'lucide-react';
+import { StoreSettingsSection } from './components/StoreSettingsSection';
+import { UserManagementSection } from './components/UserManagementSection';
+import { AdminAuthModal } from './components/AdminAuthModal';
+import { Inbox, Layers, PlusCircle, ShieldCheck, RefreshCw, Database, CreditCard, BarChart3, Trash2, Sparkles, Loader2, Store, Users } from 'lucide-react';
 import { isSupabaseConfigured } from '../../infrastructure/supabase/supabaseClient';
 import { seedDatabase, clearDatabase } from '../../infrastructure/api/apiClient';
 
@@ -22,6 +25,7 @@ interface BackofficeViewProps {
   onAddProduct: (newProductData: Omit<Product, 'id' | 'createdAt'>) => Promise<Product>;
   onRefresh: () => void;
   isLoading: boolean;
+  onStoreSettingsUpdated?: (settings: StoreSettings) => void;
 }
 
 export const BackofficeView: React.FC<BackofficeViewProps> = ({
@@ -37,42 +41,39 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
   onAddProduct,
   onRefresh,
   isLoading,
+  onStoreSettingsUpdated,
 }) => {
-  const [subTab, setSubTab] = useState<'orders' | 'credits' | 'reports' | 'stock' | 'add'>('orders');
+  const [subTab, setSubTab] = useState<'orders' | 'credits' | 'reports' | 'stock' | 'add' | 'settings' | 'users'>('orders');
   const [isOperatingDb, setIsOperatingDb] = useState(false);
   const [dbMessage, setDbMessage] = useState<string | null>(null);
+
+  // Admin Auth Modal state
+  const [adminAuthModal, setAdminAuthModal] = useState<{
+    isOpen: boolean;
+    actionType: 'seed' | 'clear' | null;
+  }>({ isOpen: false, actionType: null });
 
   const pendingOrdersCount = orders.filter(o => o.status === 'Pendiente').length;
   const approvedOrdersCount = orders.filter(o => o.status === 'Aprobado').length;
   const categories = Array.from(new Set(products.map(p => p.category))).sort();
 
-  const handleSeedDatabase = async () => {
-    if (!confirm('¿Deseas poblar la base de datos con los productos y solicitudes de prueba iniciales?')) return;
-    setIsOperatingDb(true);
-    setDbMessage(null);
-    try {
-      const res = await seedDatabase();
-      setDbMessage(res.message || 'Base de datos poblada exitosamente.');
-      onRefresh();
-      setTimeout(() => setDbMessage(null), 3500);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Error al poblar la base de datos');
-    } finally {
-      setIsOperatingDb(false);
-    }
+  const handleOpenAuthModal = (type: 'seed' | 'clear') => {
+    setAdminAuthModal({ isOpen: true, actionType: type });
   };
 
-  const handleClearDatabase = async () => {
-    if (!confirm('⚠️ ATENCIÓN: ¿Estás seguro de ELIMINAR TODA LA INFORMACIÓN de la base de datos (productos, solicitudes y abonos)?\n\nEsta acción dejará el sistema completamente vacío.')) return;
+  const handleAdminAuthConfirm = async (credentials: { email: string; password: string }) => {
     setIsOperatingDb(true);
     setDbMessage(null);
     try {
-      const res = await clearDatabase();
-      setDbMessage(res.message || 'Base de datos vaciada por completo.');
+      if (adminAuthModal.actionType === 'seed') {
+        const res = await seedDatabase(credentials);
+        setDbMessage(res.message || 'Base de datos poblada exitosamente por el administrador.');
+      } else if (adminAuthModal.actionType === 'clear') {
+        const res = await clearDatabase(credentials);
+        setDbMessage(res.message || 'Base de datos vaciada por completo.');
+      }
       onRefresh();
-      setTimeout(() => setDbMessage(null), 3500);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Error al vaciar la base de datos');
+      setTimeout(() => setDbMessage(null), 4000);
     } finally {
       setIsOperatingDb(false);
     }
@@ -106,10 +107,10 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
 
           <div className="flex items-center gap-2 justify-end">
             <button
-              onClick={handleSeedDatabase}
+              onClick={() => handleOpenAuthModal('seed')}
               disabled={isLoading || isOperatingDb}
               className="px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95"
-              title="Poblar base de datos con datos de prueba"
+              title="Poblar base de datos con datos de prueba (requiere credenciales de admin)"
             >
               {isOperatingDb ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -120,10 +121,10 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
             </button>
 
             <button
-              onClick={handleClearDatabase}
+              onClick={() => handleOpenAuthModal('clear')}
               disabled={isLoading || isOperatingDb}
               className="px-3 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/20 active:scale-95"
-              title="Vaciar toda la información de la base de datos"
+              title="Vaciar toda la información de la base de datos (requiere credenciales de admin)"
             >
               {isOperatingDb ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -228,6 +229,30 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
           <PlusCircle className="w-4 h-4 text-emerald-400" />
           <span>Agregar Producto</span>
         </button>
+
+        <button
+          onClick={() => setSubTab('settings')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+            subTab === 'settings'
+              ? 'bg-slate-900 text-white shadow-md'
+              : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <Store className="w-4 h-4 text-emerald-400" />
+          <span>Datos de la Tienda</span>
+        </button>
+
+        <button
+          onClick={() => setSubTab('users')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+            subTab === 'users'
+              ? 'bg-slate-900 text-white shadow-md'
+              : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <Users className="w-4 h-4 text-emerald-400" />
+          <span>Usuarios</span>
+        </button>
       </div>
 
       {/* Sub-Tab Content */}
@@ -273,6 +298,31 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
           existingCategories={categories}
         />
       )}
+
+      {subTab === 'settings' && (
+        <StoreSettingsSection
+          onSettingsUpdated={onStoreSettingsUpdated}
+        />
+      )}
+
+      {subTab === 'users' && (
+        <UserManagementSection />
+      )}
+
+      {/* Admin Credentials Auth Modal */}
+      <AdminAuthModal
+        isOpen={adminAuthModal.isOpen}
+        title={adminAuthModal.actionType === 'seed' ? 'Poblar Base de Datos' : 'Vaciar Base de Datos'}
+        description={
+          adminAuthModal.actionType === 'seed'
+            ? 'Ingrese usuario y contraseña de administrador para confirmar el restablecimiento e inserción de datos iniciales.'
+            : 'Ingrese usuario y contraseña de administrador para confirmar la eliminación completa de toda la información de la base de datos.'
+        }
+        confirmButtonText={adminAuthModal.actionType === 'seed' ? 'Confirmar y Poblar DB' : 'Confirmar y Vaciar DB'}
+        isDanger={adminAuthModal.actionType === 'clear'}
+        onClose={() => setAdminAuthModal({ isOpen: false, actionType: null })}
+        onConfirm={handleAdminAuthConfirm}
+      />
     </div>
   );
 };

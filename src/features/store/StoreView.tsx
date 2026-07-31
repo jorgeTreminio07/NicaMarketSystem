@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Product, CartItem } from '../../types';
+import { Product, CartItem, StoreSettings } from '../../types';
 import { ProductCard } from './components/ProductCard';
 import { CategoryFilter } from './components/CategoryFilter';
 import { SearchBar } from './components/SearchBar';
@@ -12,6 +12,7 @@ interface StoreViewProps {
   onRefresh: () => void;
   onAddToCart: (product: Product, quantity?: number) => void;
   cartItems: CartItem[];
+  storeSettings?: StoreSettings;
 }
 
 export const StoreView: React.FC<StoreViewProps> = ({
@@ -20,6 +21,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
   onRefresh,
   onAddToCart,
   cartItems,
+  storeSettings,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -105,10 +107,10 @@ export const StoreView: React.FC<StoreViewProps> = ({
             <span>Catálogo Completo y Actualizado</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight">
-            Nuestros Productos
+            ¡Te damos la bienvenida a nuestro catálogo!
           </h1>
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-            Explora nuestra tienda en línea. Todos los productos están organizados alfabéticamente. Filtra por categoría, busca lo que deseas e ingresa tu pedido directo por WhatsApp.
+            {storeSettings?.description || 'Explora nuestra tienda en línea. Todos los productos están organizados alfabéticamente. Filtra por categoría, busca lo que deseas e ingresa tu pedido directo por WhatsApp.'}
           </p>
         </div>
 

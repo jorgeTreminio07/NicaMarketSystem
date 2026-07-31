@@ -10,6 +10,7 @@ interface CartViewProps {
   onClearCart: () => void;
   onCheckout: (customerName: string, customerPhone: string, items: CartItem[], paymentType: PaymentType) => Promise<import('../../types').Order | null>;
   onGoBackToStore: () => void;
+  storeWhatsappNumber?: string;
 }
 
 export const CartView: React.FC<CartViewProps> = ({
@@ -19,6 +20,7 @@ export const CartView: React.FC<CartViewProps> = ({
   onClearCart,
   onCheckout,
   onGoBackToStore,
+  storeWhatsappNumber,
 }) => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -59,14 +61,15 @@ export const CartView: React.FC<CartViewProps> = ({
       const newOrder = await onCheckout(customerName.trim(), customerPhone.trim(), items, paymentType);
 
       if (newOrder) {
-        // 2. Generate WhatsApp URL for number 505 89098184
+        // 2. Generate WhatsApp URL for target store number
         const whatsappUrl = generateOrderWhatsAppUrl(
           customerName.trim(),
           customerPhone.trim(),
           items,
           total,
           newOrder.orderNumber,
-          paymentType
+          paymentType,
+          storeWhatsappNumber
         );
 
         // Open WhatsApp
