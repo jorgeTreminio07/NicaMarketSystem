@@ -1156,6 +1156,32 @@ async function startServer() {
   });
 
   app.get('/api/users', async (req, res) => {
+    try {
+      const { data: dbUsers, error: dbErr } = await supabase.from('users').select('*');
+      if (!dbErr && dbUsers) {
+        users = dbUsers.map((u: any) => ({
+          id: String(u.id),
+          email: String(u.email),
+          password_hash: String(u.password_hash || u.passwordHash || u.password || ''),
+          role: String(u.role || 'staff'),
+          created_at: String(u.created_at || u.createdAt || new Date().toISOString())
+        }));
+      }
+    } catch (e) {
+      console.log('Error refrescando usuarios de la base de datos:', e);
+    }
+
+    // Always ensure admin exists
+    if (!users.some(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() || u.email.toLowerCase() === 'admin')) {
+      users.unshift({
+        id: '00000000-0000-4000-8000-000000000001',
+        email: DEFAULT_ADMIN_EMAIL,
+        password_hash: DEFAULT_ADMIN_PASS,
+        role: 'admin',
+        created_at: new Date().toISOString()
+      });
+    }
+
     const safeUsers = users.map(u => ({
       id: u.id,
       email: u.email,
@@ -1174,6 +1200,22 @@ async function startServer() {
 
     const cleanedEmail = String(email).trim().toLowerCase();
 
+    // Check if exists in DB or memory
+    try {
+      const { data: dbUsers } = await supabase.from('users').select('*');
+      if (dbUsers) {
+        users = dbUsers.map((u: any) => ({
+          id: String(u.id),
+          email: String(u.email),
+          password_hash: String(u.password_hash || u.passwordHash || u.password || ''),
+          role: String(u.role || 'staff'),
+          created_at: String(u.created_at || u.createdAt || new Date().toISOString())
+        }));
+      }
+    } catch (e) {
+      console.log('Error verificando usuarios en BD:', e);
+    }
+
     if (users.some(u => u.email.toLowerCase() === cleanedEmail)) {
       return res.status(400).json({ error: 'El correo electrónico ya está registrado.' });
     }
@@ -1189,15 +1231,27 @@ async function startServer() {
     users.push(newUser);
 
     try {
-      await supabase.from('users').insert([{
+      const { error: insErr } = await supabase.from('users').insert([{
         id: newUser.id,
         email: newUser.email,
         password_hash: newUser.password_hash,
         role: newUser.role,
         created_at: newUser.created_at
       }]);
+
+      if (insErr) {
+        console.error('Error al insertar usuario en la tabla users:', insErr);
+        // Retry with upsert / alternate field mapping if needed
+        await supabase.from('users').upsert([{
+          id: newUser.id,
+          email: newUser.email,
+          password_hash: newUser.password_hash,
+          role: newUser.role,
+          created_at: newUser.created_at
+        }]);
+      }
     } catch (err) {
-      console.log('Error insertando usuario en Supabase:', err);
+      console.error('Excepción al insertar usuario en la base de datos:', err);
     }
 
     const safeUser = {

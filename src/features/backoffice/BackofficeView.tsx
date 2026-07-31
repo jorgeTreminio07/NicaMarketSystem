@@ -50,7 +50,9 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
   const [isOperatingDb, setIsOperatingDb] = useState(false);
   const [dbMessage, setDbMessage] = useState<string | null>(null);
 
-  const isSystemAdmin = isAdmin || currentUser?.role === 'admin' || currentUser?.email.toLowerCase() === 'admin' || currentUser?.email.toLowerCase() === 'admin@admin.com';
+  const isSystemAdmin = currentUser 
+    ? (currentUser.role === 'admin' || currentUser.email.toLowerCase() === 'admin' || currentUser.email.toLowerCase() === 'admin@admin.com')
+    : isAdmin;
 
   // Admin Auth Modal state
   const [adminAuthModal, setAdminAuthModal] = useState<{
