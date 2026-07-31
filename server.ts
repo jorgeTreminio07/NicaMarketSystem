@@ -340,7 +340,7 @@ async function seedSupabase() {
   if (prodErr) {
     console.error('Error insertando productos iniciales en Supabase:', prodErr.message);
   } else {
-    console.log('✅ Productos iniciales creados en Supabase.');
+    console.log('[OK] Productos iniciales creados en Supabase.');
   }
 
   // 3. Insert new orders
@@ -349,7 +349,7 @@ async function seedSupabase() {
   if (ordErr) {
     console.error('Error insertando órdenes iniciales en Supabase:', ordErr.message);
   } else {
-    console.log('✅ Solicitudes/órdenes iniciales creadas en Supabase.');
+    console.log('[OK] Solicitudes/órdenes iniciales creadas en Supabase.');
   }
 
   products = [...INITIAL_PRODUCTS];

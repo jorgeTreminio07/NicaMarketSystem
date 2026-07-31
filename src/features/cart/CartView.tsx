@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CartItem, PaymentType } from '../../types';
-import { ShoppingBag, Trash2, Plus, Minus, ArrowLeft, Send, CheckCircle2, User, Phone, ShoppingCart, CreditCard, Calendar } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, ArrowLeft, Send, CheckCircle2, User, Phone, ShoppingCart, CreditCard, Calendar, Check } from 'lucide-react';
 import { generateOrderWhatsAppUrl } from '../../utils/whatsapp';
 
 interface CartViewProps {
@@ -109,9 +109,15 @@ export const CartView: React.FC<CartViewProps> = ({
             </p>
           </div>
 
-          <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-left text-xs text-emerald-900 space-y-1">
-            <p className="font-bold">✓ 1. Solicitud recibida en Backoffice</p>
-            <p className="font-bold">✓ 2. Mensaje de WhatsApp listo para enviar al (505) 89098184</p>
+          <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-left text-xs text-emerald-900 space-y-1.5">
+            <p className="font-bold flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>1. Solicitud recibida en Backoffice</span>
+            </p>
+            <p className="font-bold flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>2. Mensaje de WhatsApp listo para enviar al (505) 89098184</span>
+            </p>
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">

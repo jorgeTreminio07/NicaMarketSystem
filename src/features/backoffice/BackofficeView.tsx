@@ -8,7 +8,7 @@ import { ReportsSection } from './components/ReportsSection';
 import { StoreSettingsSection } from './components/StoreSettingsSection';
 import { UserManagementSection } from './components/UserManagementSection';
 import { AdminAuthModal } from './components/AdminAuthModal';
-import { Inbox, Layers, PlusCircle, ShieldCheck, RefreshCw, Database, CreditCard, BarChart3, Trash2, Sparkles, Loader2, Store, Users } from 'lucide-react';
+import { Inbox, Layers, PlusCircle, ShieldCheck, RefreshCw, Database, CreditCard, BarChart3, Trash2, Sparkles, Loader2, Store, Users, X } from 'lucide-react';
 import { seedDatabase, clearDatabase } from '../../infrastructure/api/apiClient';
 
 interface BackofficeViewProps {
@@ -166,8 +166,8 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
       {dbMessage && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-between shadow-sm animate-in fade-in">
           <span>{dbMessage}</span>
-          <button onClick={() => setDbMessage(null)} className="text-emerald-600 hover:text-emerald-900 font-black">
-            ✕
+          <button onClick={() => setDbMessage(null)} className="text-emerald-600 hover:text-emerald-900 font-black p-1 rounded-lg hover:bg-emerald-100/60">
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}

@@ -385,11 +385,14 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                 <span className="font-mono text-xs font-extrabold text-emerald-400 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
                   N° {selectedOrderForModal.orderNumber || selectedOrderForModal.id.slice(0, 8)}
                 </span>
-                <span className="text-xs text-slate-300 font-medium">
-                  📅 {new Date(selectedOrderForModal.createdAt).toLocaleString('es-NI', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  })}
+                <span className="text-xs text-slate-300 font-medium flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <span>
+                    {new Date(selectedOrderForModal.createdAt).toLocaleString('es-NI', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })}
+                  </span>
                 </span>
               </div>
               <button
@@ -445,9 +448,9 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                     onChange={e => handlePaymentTypeChange(selectedOrderForModal, e.target.value as PaymentType)}
                     className="w-full text-xs font-bold bg-white border border-slate-300 rounded-xl p-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   >
-                    <option value="contado">💵 De Contado (C$ {selectedOrderForModal.total.toFixed(2)})</option>
-                    <option value="cuotas_2">🗓️ 2 Cuotas Quincenales (2x C$ {(selectedOrderForModal.total / 2).toFixed(2)})</option>
-                    <option value="cuotas_4">🗓️ 4 Cuotas Semanales (4x C$ {(selectedOrderForModal.total / 4).toFixed(2)})</option>
+                    <option value="contado">De Contado (C$ {selectedOrderForModal.total.toFixed(2)})</option>
+                    <option value="cuotas_2">2 Cuotas Quincenales (2x C$ {(selectedOrderForModal.total / 2).toFixed(2)})</option>
+                    <option value="cuotas_4">4 Cuotas Semanales (4x C$ {(selectedOrderForModal.total / 4).toFixed(2)})</option>
                   </select>
                   <p className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 p-2 rounded-lg border border-emerald-200/60">
                     {formatPaymentMethodText(selectedPaymentTypes[selectedOrderForModal.id] || selectedOrderForModal.paymentType || 'contado', selectedOrderForModal.total)}
