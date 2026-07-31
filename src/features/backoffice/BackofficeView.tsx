@@ -5,8 +5,9 @@ import { StockManagementSection } from './components/StockManagementSection';
 import { AddProductSection } from './components/AddProductSection';
 import { CreditManagementSection } from './components/CreditManagementSection';
 import { ReportsSection } from './components/ReportsSection';
-import { Inbox, Layers, PlusCircle, ShieldCheck, RefreshCw, Database, CreditCard, BarChart3 } from 'lucide-react';
+import { Inbox, Layers, PlusCircle, ShieldCheck, RefreshCw, Database, CreditCard, BarChart3, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import { isSupabaseConfigured } from '../../infrastructure/supabase/supabaseClient';
+import { seedDatabase, clearDatabase } from '../../infrastructure/api/apiClient';
 
 interface BackofficeViewProps {
   products: Product[];
@@ -38,10 +39,44 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
   isLoading,
 }) => {
   const [subTab, setSubTab] = useState<'orders' | 'credits' | 'reports' | 'stock' | 'add'>('orders');
+  const [isOperatingDb, setIsOperatingDb] = useState(false);
+  const [dbMessage, setDbMessage] = useState<string | null>(null);
 
   const pendingOrdersCount = orders.filter(o => o.status === 'Pendiente').length;
   const approvedOrdersCount = orders.filter(o => o.status === 'Aprobado').length;
   const categories = Array.from(new Set(products.map(p => p.category))).sort();
+
+  const handleSeedDatabase = async () => {
+    if (!confirm('¿Deseas poblar la base de datos con los productos y solicitudes de prueba iniciales?')) return;
+    setIsOperatingDb(true);
+    setDbMessage(null);
+    try {
+      const res = await seedDatabase();
+      setDbMessage(res.message || 'Base de datos poblada exitosamente.');
+      onRefresh();
+      setTimeout(() => setDbMessage(null), 3500);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error al poblar la base de datos');
+    } finally {
+      setIsOperatingDb(false);
+    }
+  };
+
+  const handleClearDatabase = async () => {
+    if (!confirm('⚠️ ATENCIÓN: ¿Estás seguro de ELIMINAR TODA LA INFORMACIÓN de la base de datos (productos, solicitudes y abonos)?\n\nEsta acción dejará el sistema completamente vacío.')) return;
+    setIsOperatingDb(true);
+    setDbMessage(null);
+    try {
+      const res = await clearDatabase();
+      setDbMessage(res.message || 'Base de datos vaciada por completo.');
+      onRefresh();
+      setTimeout(() => setDbMessage(null), 3500);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error al vaciar la base de datos');
+    } finally {
+      setIsOperatingDb(false);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -60,25 +95,64 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
           </p>
         </div>
 
-        {/* Backend Database Status Badge & Refresh */}
-        <div className="flex items-center gap-3">
-          <div className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-medium flex items-center gap-2 text-slate-300">
-            <Database className="w-4 h-4 text-emerald-400" />
+        {/* Backend Database Status Badge & DB Actions */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
+          <div className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-medium flex items-center gap-2 text-slate-300 justify-center">
+            <Database className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>
               Backend: <strong className="text-white">{isSupabaseConfigured ? 'Supabase DB' : 'Express REST Engine'}</strong>
             </span>
           </div>
 
-          <button
-            onClick={onRefresh}
-            disabled={isLoading}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white transition-all active:scale-95"
-            title="Refrescar datos del Backoffice"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-emerald-400' : ''}`} />
-          </button>
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              onClick={handleSeedDatabase}
+              disabled={isLoading || isOperatingDb}
+              className="px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95"
+              title="Poblar base de datos con datos de prueba"
+            >
+              {isOperatingDb ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">Poblar Datos</span>
+            </button>
+
+            <button
+              onClick={handleClearDatabase}
+              disabled={isLoading || isOperatingDb}
+              className="px-3 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/20 active:scale-95"
+              title="Vaciar toda la información de la base de datos"
+            >
+              {isOperatingDb ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">Vaciar DB</span>
+            </button>
+
+            <button
+              onClick={onRefresh}
+              disabled={isLoading || isOperatingDb}
+              className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white transition-all active:scale-95"
+              title="Refrescar datos del Backoffice"
+            >
+              <RefreshCw className={`w-4 h-4 ${(isLoading || isOperatingDb) ? 'animate-spin text-emerald-400' : ''}`} />
+            </button>
+          </div>
         </div>
       </div>
+
+      {dbMessage && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-between shadow-sm animate-in fade-in">
+          <span>{dbMessage}</span>
+          <button onClick={() => setDbMessage(null)} className="text-emerald-600 hover:text-emerald-900 font-black">
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Navigation Sub-Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">

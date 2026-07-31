@@ -255,7 +255,7 @@ const INITIAL_ORDERS: Order[] = [
 let orders: Order[] = [...INITIAL_ORDERS];
 
 async function seedSupabase() {
-  console.log('Reiniciando y poblando tablas en Supabase...');
+  console.log('Reiniciando y poblando tablas en Supabase con datos iniciales...');
   
   // 1. Clean existing tables in Supabase
   try {
@@ -276,7 +276,7 @@ async function seedSupabase() {
   if (prodErr) {
     console.error('Error insertando productos iniciales en Supabase:', prodErr.message);
   } else {
-    console.log('✅ Productos sincronizados exitosamente en Supabase.');
+    console.log('✅ Productos iniciales creados en Supabase.');
   }
 
   // 3. Insert new orders
@@ -285,11 +285,49 @@ async function seedSupabase() {
   if (ordErr) {
     console.error('Error insertando órdenes iniciales en Supabase:', ordErr.message);
   } else {
-    console.log('✅ Solicitudes/órdenes sincronizadas exitosamente en Supabase.');
+    console.log('✅ Solicitudes/órdenes iniciales creadas en Supabase.');
   }
 
   products = [...INITIAL_PRODUCTS];
   orders = [...INITIAL_ORDERS];
+}
+
+async function clearSupabase() {
+  console.log('Eliminando toda la información de la base de datos en Supabase...');
+  try {
+    await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  } catch (e) {
+    console.log('Aviso al vaciar órdenes:', e);
+  }
+  try {
+    await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  } catch (e) {
+    console.log('Aviso al vaciar productos:', e);
+  }
+  products = [];
+  orders = [];
+}
+
+async function loadDataFromSupabase() {
+  console.log('Cargando datos persistentes guardados en Supabase...');
+  try {
+    const { data: prodData, error: prodErr } = await supabase.from('products').select('*');
+    if (!prodErr && prodData) {
+      products = prodData.map(mapProductFromRow);
+    } else {
+      products = [];
+    }
+
+    const { data: ordData, error: ordErr } = await supabase.from('orders').select('*');
+    if (!ordErr && ordData) {
+      orders = ordData.map(mapOrderFromRow);
+    } else {
+      orders = [];
+    }
+    console.log(`Carga inicial desde Supabase completada: ${products.length} productos, ${orders.length} órdenes.`);
+  } catch (err) {
+    console.log('Aviso al cargar datos desde Supabase:', err);
+  }
 }
 
 async function startServer() {
@@ -851,6 +889,19 @@ async function startServer() {
     }
   });
 
+  app.post('/api/clear-all', async (req, res) => {
+    try {
+      await clearSupabase();
+      res.json({
+        success: true,
+        message: 'Toda la información de la base de datos ha sido eliminada exitosamente.'
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al vaciar datos';
+      res.status(500).json({ success: false, error: msg });
+    }
+  });
+
   // === VITE MIDDLEWARE SETUP ===
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -868,8 +919,8 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Server listening on http://0.0.0.0:${PORT}`);
-    // Auto seed Supabase on boot
-    await seedSupabase().catch(err => console.log('Error al autopoblar Supabase:', err));
+    // Load stored data from Supabase on boot (No auto-wiping/seeding)
+    await loadDataFromSupabase().catch(err => console.log('Error al cargar datos desde Supabase:', err));
   });
 }
 

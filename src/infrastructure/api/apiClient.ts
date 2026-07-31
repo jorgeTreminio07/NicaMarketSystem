@@ -139,5 +139,23 @@ export class ApiOrderRepository implements IOrderRepository {
   }
 }
 
+export async function seedDatabase(): Promise<{ success: boolean; message: string }> {
+  const res = await fetch('/api/seed', { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al poblar la base de datos');
+  }
+  return res.json();
+}
+
+export async function clearDatabase(): Promise<{ success: boolean; message: string }> {
+  const res = await fetch('/api/clear-all', { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al vaciar la base de datos');
+  }
+  return res.json();
+}
+
 export const productRepository = new ApiProductRepository();
 export const orderRepository = new ApiOrderRepository();
