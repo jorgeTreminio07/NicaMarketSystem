@@ -1,0 +1,6 @@
+{
+  "name": "E-Commerce & Backoffice",
+  "description": "Tienda en línea de e-commerce con catálogo, filtros, carrito de compras, pedidos por WhatsApp y panel de administración Backoffice para gestión de pedidos e inventario.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
