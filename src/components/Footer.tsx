@@ -3,9 +3,12 @@ import { ShoppingBag, ShieldCheck, PhoneCall, FileText } from 'lucide-react';
 
 interface FooterProps {
   onOpenPrivacyPolicy?: () => void;
+  whatsappNumber?: string;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onOpenPrivacyPolicy }) => {
+export const Footer: React.FC<FooterProps> = ({ onOpenPrivacyPolicy, whatsappNumber }) => {
+  const cleanPhone = (whatsappNumber || '50589098184').replace(/[^\d]/g, '');
+
   return (
     <footer className="mt-16 bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
@@ -19,7 +22,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenPrivacyPolicy }) => {
 
           <div className="flex flex-wrap items-center gap-6 text-slate-300">
             <a 
-              href="https://wa.me/50589098184" 
+              href={`https://wa.me/${cleanPhone}`} 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 hover:text-emerald-400 transition-colors"

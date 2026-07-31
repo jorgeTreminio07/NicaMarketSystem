@@ -460,6 +460,7 @@ export default function App() {
       {/* Footer */}
       <Footer 
         onOpenPrivacyPolicy={() => setShowPrivacyModal(true)}
+        whatsappNumber={storeSettings?.whatsappNumber}
       />
 
       {/* Privacy Policy Modal */}
