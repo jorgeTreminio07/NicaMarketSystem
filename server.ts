@@ -1223,8 +1223,7 @@ async function startServer() {
       created_at: new Date().toISOString()
     };
 
-    users.push(newUser);
-
+    // Attempt DB insertion first
     try {
       const { error: insErr } = await supabase.from('users').insert([{
         id: newUser.id,
@@ -1235,11 +1234,20 @@ async function startServer() {
       }]);
 
       if (insErr) {
-        console.log('Aviso al insertar en tabla users (mantenido en memoria del servidor):', insErr.message || insErr);
+        console.error('Error insertando usuario en Supabase:', insErr);
+        return res.status(400).json({
+          error: `Error en la base de datos (Supabase): ${insErr.message}. Deshabilita RLS en la tabla 'users' o agrega una política de acceso.`
+        });
       }
-    } catch (err) {
-      console.log('Excepción al insertar usuario en la base de datos:', err);
+    } catch (err: any) {
+      console.error('Excepción al insertar usuario en Supabase:', err);
+      return res.status(500).json({
+        error: `Excepción al guardar en base de datos: ${err?.message || 'Error de conexión'}`
+      });
     }
+
+    // Only add to in-memory state after successful DB insertion
+    users.push(newUser);
 
     const safeUser = {
       id: newUser.id,
@@ -1270,31 +1278,39 @@ async function startServer() {
       return res.status(400).json({ error: 'El usuario administrador principal es intocable y no se puede editar.' });
     }
 
+    let targetEmail = user.email;
     if (email && String(email).trim()) {
-      const cleanedEmail = String(email).trim().toLowerCase();
-      if (users.some(u => u.id !== id && u.email.toLowerCase() === cleanedEmail)) {
+      targetEmail = String(email).trim().toLowerCase();
+      if (users.some(u => u.id !== id && u.email.toLowerCase() === targetEmail)) {
         return res.status(400).json({ error: 'El correo electrónico ya está en uso por otro usuario.' });
       }
-      user.email = cleanedEmail;
     }
 
-    if (password && String(password).trim().length > 0) {
-      user.password_hash = String(password).trim();
-    }
-
-    if (role) {
-      user.role = role === 'admin' ? 'admin' : 'staff';
-    }
+    const targetPassword = (password && String(password).trim().length > 0) ? String(password).trim() : user.password_hash;
+    const targetRole = role ? (role === 'admin' ? 'admin' : 'staff') : user.role;
 
     try {
-      await supabase.from('users').update({
-        email: user.email,
-        password_hash: user.password_hash,
-        role: user.role
+      const { error: updErr } = await supabase.from('users').update({
+        email: targetEmail,
+        password_hash: targetPassword,
+        role: targetRole
       }).eq('id', id);
-    } catch (err) {
-      console.log('Error actualizando usuario en base de datos:', err);
+
+      if (updErr) {
+        console.error('Error actualizando usuario en Supabase:', updErr);
+        return res.status(400).json({
+          error: `Error al actualizar en la base de datos (Supabase): ${updErr.message}`
+        });
+      }
+    } catch (err: any) {
+      console.error('Excepción actualizando usuario en base de datos:', err);
+      return res.status(500).json({ error: `Excepción en la base de datos: ${err?.message || 'Error de conexión'}` });
     }
+
+    // Update in-memory state after DB success
+    user.email = targetEmail;
+    user.password_hash = targetPassword;
+    user.role = targetRole;
 
     const safeUser = {
       id: user.id,
@@ -1323,13 +1339,20 @@ async function startServer() {
       return res.status(400).json({ error: 'El usuario administrador principal es intocable y no se puede eliminar.' });
     }
 
-    users = users.filter(u => u.id !== id);
-
     try {
-      await supabase.from('users').delete().eq('id', id);
-    } catch (err) {
-      console.log('Error eliminando usuario en base de datos:', err);
+      const { error: delErr } = await supabase.from('users').delete().eq('id', id);
+      if (delErr) {
+        console.error('Error eliminando usuario en Supabase:', delErr);
+        return res.status(400).json({
+          error: `Error al eliminar en la base de datos (Supabase): ${delErr.message}`
+        });
+      }
+    } catch (err: any) {
+      console.error('Excepción eliminando usuario en base de datos:', err);
+      return res.status(500).json({ error: `Excepción en la base de datos: ${err?.message || 'Error de conexión'}` });
     }
+
+    users = users.filter(u => u.id !== id);
 
     res.json({ success: true, message: 'Usuario eliminado correctamente.' });
   });
