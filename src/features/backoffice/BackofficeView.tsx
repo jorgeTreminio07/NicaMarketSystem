@@ -54,6 +54,12 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
     ? (currentUser.role === 'admin' || currentUser.email.toLowerCase() === 'admin' || currentUser.email.toLowerCase() === 'admin@admin.com')
     : isAdmin;
 
+  React.useEffect(() => {
+    if (!isSystemAdmin && subTab === 'users') {
+      setSubTab('orders');
+    }
+  }, [isSystemAdmin, subTab]);
+
   // Admin Auth Modal state
   const [adminAuthModal, setAdminAuthModal] = useState<{
     isOpen: boolean;
