@@ -84,9 +84,9 @@ let storeSettings: StoreSettings = {
 // Initial Users
 let users: UserRow[] = [
   {
-    id: 'u0000000-0000-4000-8000-000000000001',
+    id: '00000000-0000-4000-8000-000000000001',
     email: DEFAULT_ADMIN_EMAIL,
-    password_hash: hashPassword(DEFAULT_ADMIN_PASS),
+    password_hash: DEFAULT_ADMIN_PASS,
     role: 'admin',
     created_at: new Date().toISOString()
   }
@@ -417,34 +417,32 @@ async function loadDataFromSupabase() {
       users = usrArr.map((u: any) => ({
         id: String(u.id),
         email: String(u.email),
-        password_hash: String(u.password_hash || u.passwordHash),
+        password_hash: String(u.password_hash || u.passwordHash || ''),
         role: String(u.role || 'staff'),
         created_at: String(u.created_at || u.createdAt || new Date().toISOString())
       }));
     }
 
-    // Always ensure default admin user exists and has the updated password hash
-    const adminHash = hashPassword(DEFAULT_ADMIN_PASS);
-    const adminIdx = users.findIndex(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase());
+    // Always ensure default admin user exists
+    const adminIdx = users.findIndex(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() || u.email.toLowerCase() === 'admin');
 
     if (adminIdx >= 0) {
-      users[adminIdx].password_hash = adminHash;
       users[adminIdx].role = 'admin';
     } else {
       users.unshift({
-        id: 'u0000000-0000-4000-8000-000000000001',
+        id: '00000000-0000-4000-8000-000000000001',
         email: DEFAULT_ADMIN_EMAIL,
-        password_hash: adminHash,
+        password_hash: DEFAULT_ADMIN_PASS,
         role: 'admin',
         created_at: new Date().toISOString()
       });
     }
 
-    const mainAdmin = users.find(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase())!;
+    const mainAdmin = users.find(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() || u.email.toLowerCase() === 'admin')!;
     await supabase.from('users').upsert([{
       id: mainAdmin.id,
       email: mainAdmin.email,
-      password_hash: mainAdmin.password_hash,
+      password_hash: DEFAULT_ADMIN_PASS,
       role: mainAdmin.role,
       created_at: mainAdmin.created_at
     }]);
@@ -1047,73 +1045,91 @@ async function startServer() {
     const rawPass = String(password).trim();
     const inputHash = hashPassword(rawPass);
 
-    // Flexible admin check (matches 'admin', 'admin@admin.com', or DEFAULT_ADMIN_EMAIL)
-    const isAdminAccount = cleanedEmail === 'admin' ||
-                           cleanedEmail === 'admin@admin.com' ||
-                           cleanedEmail === DEFAULT_ADMIN_EMAIL.toLowerCase();
+    // Refresh users from Supabase DB on every login attempt
+    try {
+      const { data: dbUsers, error: dbErr } = await supabase.from('users').select('*');
+      if (!dbErr && dbUsers && dbUsers.length > 0) {
+        users = dbUsers.map((u: any) => ({
+          id: String(u.id),
+          email: String(u.email),
+          password_hash: String(u.password_hash || u.passwordHash || ''),
+          role: String(u.role || 'staff'),
+          created_at: String(u.created_at || u.createdAt || new Date().toISOString())
+        }));
+      }
+    } catch (e) {
+      console.log('Aviso al consultar Supabase en login:', e);
+    }
 
-    const isAdminPass = rawPass === '850012cf-2945-4293-a2d5-6b2956d15cfb' ||
-                        rawPass === DEFAULT_ADMIN_PASS ||
-                        inputHash === hashPassword(DEFAULT_ADMIN_PASS);
+    // Look for matching user in users array (matching email, admin, or admin@admin.com)
+    let matchedUser = users.find(u => {
+      const dbEmail = u.email.toLowerCase();
+      if (dbEmail === cleanedEmail) return true;
+      if (cleanedEmail === 'admin' && (dbEmail === 'admin@admin.com' || u.role === 'admin')) return true;
+      if (cleanedEmail === 'admin@admin.com' && dbEmail === 'admin') return true;
+      return false;
+    });
 
-    if (isAdminAccount && isAdminPass) {
-      let adminUser = users.find(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() || u.email.toLowerCase() === 'admin');
-      if (!adminUser) {
-        adminUser = {
-          id: 'u0000000-0000-4000-8000-000000000001',
+    let isPasswordValid = false;
+
+    if (matchedUser) {
+      const storedPass = matchedUser.password_hash;
+      if (
+        storedPass === rawPass ||
+        storedPass === inputHash ||
+        (rawPass === DEFAULT_ADMIN_PASS && (matchedUser.role === 'admin' || matchedUser.email.toLowerCase().includes('admin')))
+      ) {
+        isPasswordValid = true;
+      }
+    }
+
+    // Hardcoded fallback for default admin account
+    const isHardcodedAdminUser = cleanedEmail === 'admin' ||
+                          cleanedEmail === 'admin@admin.com' ||
+                          cleanedEmail === DEFAULT_ADMIN_EMAIL.toLowerCase();
+
+    const isHardcodedAdminPass = rawPass === '850012cf-2945-4293-a2d5-6b2956d15cfb' ||
+                        rawPass === DEFAULT_ADMIN_PASS;
+
+    if (!isPasswordValid && isHardcodedAdminUser && isHardcodedAdminPass) {
+      if (!matchedUser) {
+        matchedUser = {
+          id: '00000000-0000-4000-8000-000000000001',
           email: DEFAULT_ADMIN_EMAIL,
-          password_hash: DEFAULT_ADMIN_PASS,
+          password_hash: rawPass,
           role: 'admin',
           created_at: new Date().toISOString()
         };
-        users.unshift(adminUser);
-      } else {
-        adminUser.password_hash = rawPass;
-        adminUser.role = 'admin';
+        users.unshift(matchedUser);
       }
+      isPasswordValid = true;
 
       try {
         await supabase.from('users').upsert([{
-          id: adminUser.id,
-          email: adminUser.email,
-          password_hash: adminUser.password_hash,
-          role: adminUser.role,
-          created_at: adminUser.created_at
+          id: matchedUser.id,
+          email: matchedUser.email,
+          password_hash: rawPass,
+          role: 'admin',
+          created_at: matchedUser.created_at
         }]);
       } catch (err) {
         console.log('Error sincronizando admin en Supabase:', err);
       }
-
-      const responseUser = {
-        id: adminUser.id,
-        email: adminUser.email,
-        role: adminUser.role,
-        createdAt: adminUser.created_at
-      };
-
-      logApiCall('USER_LOGIN', '/api/auth/login', 'POST', { email: cleanedEmail }, responseUser, 200);
-      return res.json({
-        success: true,
-        message: 'Inicio de sesión exitoso.',
-        user: responseUser
-      });
     }
 
-    // General user check: compare against plain text password OR hash
-    const user = users.find(u => u.email.toLowerCase() === cleanedEmail);
-    if (!user || (user.password_hash !== rawPass && user.password_hash !== inputHash)) {
+    if (!matchedUser || !isPasswordValid) {
       return res.status(401).json({ error: 'Credenciales inválidas. Verifique su usuario y contraseña.' });
     }
 
     const responseUser = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      createdAt: user.created_at
+      id: matchedUser.id,
+      email: matchedUser.email,
+      role: matchedUser.role,
+      createdAt: matchedUser.created_at
     };
 
     logApiCall('USER_LOGIN', '/api/auth/login', 'POST', { email: cleanedEmail }, responseUser, 200);
-    res.json({
+    return res.json({
       success: true,
       message: 'Inicio de sesión exitoso.',
       user: responseUser
@@ -1146,7 +1162,7 @@ async function startServer() {
     const newUser: UserRow = {
       id: randomUUID(),
       email: cleanedEmail,
-      password_hash: hashPassword(String(password).trim()),
+      password_hash: String(password).trim(),
       role: role === 'admin' ? 'admin' : 'staff',
       created_at: new Date().toISOString()
     };
