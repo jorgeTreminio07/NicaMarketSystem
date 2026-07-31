@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Order } from '../../../types';
 import { orderRepository } from '../../../infrastructure/api/apiClient';
 import {
@@ -19,7 +19,8 @@ import {
   Trash2,
   Eye,
   TrendingUp,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react';
 
 interface CreditManagementSectionProps {
@@ -36,6 +37,15 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Todos' | 'En Proceso' | 'Pagado' | 'En Mora'>('Todos');
   
+  // Pagination / Load 10 by 10 state (Automatic Infinite Scroll)
+  const [visibleCount, setVisibleCount] = useState<number>(10);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset pagination on search or filter change
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [searchTerm, statusFilter]);
+
   // Modal state for viewing credit detail
   const [selectedCreditForModal, setSelectedCreditForModal] = useState<Order | null>(null);
 
@@ -58,8 +68,10 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Filter only approved orders for credit tracking
-  const approvedOrders = orders.filter(o => o.status === 'Aprobado');
+  // Filter and sort only approved orders (Newest first)
+  const approvedOrders = orders
+    .filter(o => o.status === 'Aprobado')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Counts
   const inProcessCount = approvedOrders.filter(o => (o.creditStatus || 'En Proceso') === 'En Proceso').length;
@@ -90,6 +102,23 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
 
     return true;
   });
+
+  const visibleOrders = filteredOrders.slice(0, visibleCount);
+
+  // Automatic Infinite Scroll observer
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < filteredOrders.length) {
+          setVisibleCount(prev => prev + 10);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [visibleCount, filteredOrders.length]);
 
   const handleOpenAbonoModal = (order: Order) => {
     // REQUIREMENT: If order is already paid, do NOT allow adding more abonos!
@@ -281,7 +310,7 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
           <div>
             <h2 className="text-lg font-extrabold text-slate-900">Cartera de Abonos y Cobros</h2>
             <p className="text-xs text-slate-500">
-              Control general de solicitudes aprobadas, abonos recibidos, cuotas programadas y estados de saldo.
+              Control general de solicitudes aprobadas, abonos recibidos, cuotas programadas y estados de saldo (ordenadas de más reciente a más antigua).
             </p>
           </div>
         </div>
@@ -373,107 +402,132 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredOrders.map(order => {
-            const totalPaid = order.totalPaid || 0;
-            const remainingBalance = Math.max(0, order.total - totalPaid);
-            const isPagado = order.creditStatus === 'Pagado' || remainingBalance <= 0;
-            const isEnMora = order.creditStatus === 'En Mora';
-            const progressPercent = Math.min(100, Math.round((totalPaid / (order.total || 1)) * 100));
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {visibleOrders.map(order => {
+              const totalPaid = order.totalPaid || 0;
+              const remainingBalance = Math.max(0, order.total - totalPaid);
+              const isPagado = order.creditStatus === 'Pagado' || remainingBalance <= 0;
+              const isEnMora = order.creditStatus === 'En Mora';
+              const progressPercent = Math.min(100, Math.round((totalPaid / (order.total || 1)) * 100));
 
-            return (
-              <div
-                key={order.id}
-                onClick={() => setSelectedCreditForModal(order)}
-                className={`bg-white rounded-2xl border p-4 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group space-y-3 ${
-                  isPagado 
-                    ? 'border-emerald-200 hover:border-emerald-400 bg-emerald-50/10'
-                    : isEnMora
-                    ? 'border-rose-200 hover:border-rose-400 bg-rose-50/10'
-                    : 'border-slate-200 hover:border-emerald-500/50'
-                }`}
-              >
-                {/* Header: Solicitud N° & Credit Badge */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-                    Solicitud N° {order.orderNumber || order.id.slice(0, 8)}
-                  </span>
+              // Format date cleanly
+              const formattedDate = new Date(order.createdAt).toLocaleDateString('es-NI', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              });
 
-                  <div>
-                    {isPagado && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> PAGADO
-                      </span>
-                    )}
-                    {isEnMora && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
-                        <AlertTriangle className="w-3 h-3 text-rose-600" /> EN MORA
-                      </span>
-                    )}
-                    {!isPagado && !isEnMora && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                        <Clock className="w-3 h-3 text-amber-700" /> EN PROCESO
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Customer name & Phone */}
-                <div>
-                  <div className="text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
-                    <User className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="truncate">{order.customerName}</span>
-                  </div>
-                  <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
-                    <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                    <span>{order.customerPhone}</span>
-                  </div>
-                </div>
-
-                {/* Progress Bar & Balances */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex justify-between items-center text-[11px] font-bold">
-                    <span className="text-slate-500">Avance de Pago:</span>
-                    <span className="text-emerald-700">{progressPercent}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        isPagado ? 'bg-emerald-500' : 'bg-emerald-600'
-                      }`}
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-1.5 pt-1 text-[11px] text-center">
-                    <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-                      <span className="text-[9px] font-extrabold uppercase text-slate-400 block">Total</span>
-                      <span className="font-extrabold text-slate-900">C$ {order.total.toFixed(0)}</span>
-                    </div>
-                    <div className="bg-emerald-50 p-1.5 rounded-lg border border-emerald-200">
-                      <span className="text-[9px] font-extrabold uppercase text-emerald-800 block">Abonado</span>
-                      <span className="font-extrabold text-emerald-700">C$ {totalPaid.toFixed(0)}</span>
-                    </div>
-                    <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-                      <span className="text-[9px] font-extrabold uppercase text-slate-400 block">Falta</span>
-                      <span className={`font-extrabold ${remainingBalance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        C$ {remainingBalance.toFixed(0)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Action Button */}
-                <button
-                  type="button"
-                  className="w-full py-2 bg-slate-50 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200 group-hover:border-emerald-600"
+              return (
+                <div
+                  key={order.id}
+                  onClick={() => setSelectedCreditForModal(order)}
+                  className={`bg-white rounded-2xl border p-4 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group space-y-3 ${
+                    isPagado 
+                      ? 'border-emerald-200 hover:border-emerald-400 bg-emerald-50/10'
+                      : isEnMora
+                      ? 'border-rose-200 hover:border-rose-400 bg-rose-50/10'
+                      : 'border-slate-200 hover:border-emerald-500/50'
+                  }`}
                 >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Ver Detalle y Abonos</span>
-                </button>
-              </div>
-            );
-          })}
+                  {/* Header: Solicitud N° + FECHA DE SOLICITUD & Credit Badge */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                        Solicitud N° {order.orderNumber || order.id.slice(0, 8)}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span>{formattedDate}</span>
+                      </span>
+                    </div>
+
+                    <div>
+                      {isPagado && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> PAGADO
+                        </span>
+                      )}
+                      {isEnMora && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
+                          <AlertTriangle className="w-3 h-3 text-rose-600" /> EN MORA
+                        </span>
+                      )}
+                      {!isPagado && !isEnMora && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                          <Clock className="w-3 h-3 text-amber-700" /> EN PROCESO
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Customer name & Phone */}
+                  <div>
+                    <div className="text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="truncate">{order.customerName}</span>
+                    </div>
+                    <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
+                      <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span>{order.customerPhone}</span>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar & Balances */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex justify-between items-center text-[11px] font-bold">
+                      <span className="text-slate-500">Avance de Pago:</span>
+                      <span className="text-emerald-700">{progressPercent}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isPagado ? 'bg-emerald-500' : 'bg-emerald-600'
+                        }`}
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5 pt-1 text-[11px] text-center">
+                      <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                        <span className="text-[9px] font-extrabold uppercase text-slate-400 block">Total</span>
+                        <span className="font-extrabold text-slate-900">C$ {order.total.toFixed(0)}</span>
+                      </div>
+                      <div className="bg-emerald-50 p-1.5 rounded-lg border border-emerald-200">
+                        <span className="text-[9px] font-extrabold uppercase text-emerald-800 block">Abonado</span>
+                        <span className="font-extrabold text-emerald-700">C$ {totalPaid.toFixed(0)}</span>
+                      </div>
+                      <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                        <span className="text-[9px] font-extrabold uppercase text-slate-400 block">Falta</span>
+                        <span className={`font-extrabold ${remainingBalance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          C$ {remainingBalance.toFixed(0)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Action Button */}
+                  <button
+                    type="button"
+                    className="w-full py-2 bg-slate-50 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200 group-hover:border-emerald-600"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Ver Detalle y Abonos</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Sentinel element for infinite scroll */}
+          {visibleCount < filteredOrders.length && (
+            <div ref={loadMoreRef} className="py-4 text-center text-xs font-semibold text-slate-400 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+              <span>Cargando más cuentas automáticamente...</span>
+            </div>
+          )}
         </div>
       )}
 

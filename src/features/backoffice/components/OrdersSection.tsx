@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Order, PaymentType } from '../../../types';
-import { CheckCircle2, XCircle, Clock, Send, Phone, User, Calendar, MessageSquare, Trash2, CreditCard, Search, X, Eye, ShoppingBag } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Send, Phone, User, Calendar, MessageSquare, Trash2, Search, X, Eye, ShoppingBag } from 'lucide-react';
 import { generateApprovalWhatsAppUrl, generateRejectionWhatsAppUrl, formatPaymentMethodText } from '../../../utils/whatsapp';
 
 interface OrdersSectionProps {
@@ -25,12 +25,26 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [selectedPaymentTypes, setSelectedPaymentTypes] = useState<Record<string, PaymentType>>({});
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
+  
+  // Charge 10 by 10 automatically on scroll
+  const [visibleCount, setVisibleCount] = useState<number>(10);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const pendingCount = orders.filter(o => o.status === 'Pendiente').length;
-  const approvedCount = orders.filter(o => o.status === 'Aprobado').length;
-  const rejectedCount = orders.filter(o => o.status === 'Rechazado').length;
+  // Reset pagination when status or search term changes
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [filterStatus, searchTerm]);
 
-  const filteredOrders = orders.filter(order => {
+  // Sort orders newest first
+  const sortedOrders = [...orders].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  const pendingCount = sortedOrders.filter(o => o.status === 'Pendiente').length;
+  const approvedCount = sortedOrders.filter(o => o.status === 'Aprobado').length;
+  const rejectedCount = sortedOrders.filter(o => o.status === 'Rechazado').length;
+
+  const filteredOrders = sortedOrders.filter(order => {
     // Filter by status tab
     if (filterStatus !== 'Todas' && order.status !== filterStatus) {
       return false;
@@ -49,6 +63,23 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
 
     return true;
   });
+
+  const visibleOrders = filteredOrders.slice(0, visibleCount);
+
+  // Automatic Infinite Scroll observer
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < filteredOrders.length) {
+          setVisibleCount(prev => prev + 10);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [visibleCount, filteredOrders.length]);
 
   const handlePaymentTypeChange = async (order: Order, newType: PaymentType) => {
     setSelectedPaymentTypes(prev => ({ ...prev, [order.id]: newType }));
@@ -122,9 +153,9 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
           <div>
             <h2 className="text-lg font-extrabold text-slate-900">Gestión de Solicitudes</h2>
             <p className="text-xs text-slate-500">
-              {filterStatus === 'Pendiente' && 'Mostrando únicamente solicitudes pendientes por aprobar. Al aprobar, el stock de cada producto se restará automáticamente.'}
-              {filterStatus === 'Aprobado' && 'Mostrando solicitudes aprobadas. El stock de los productos asociados ya fue restado del inventario.'}
-              {filterStatus === 'Rechazado' && 'Mostrando solicitudes rechazadas. Ningún producto de estas órdenes afectó el stock.'}
+              {filterStatus === 'Pendiente' && 'Mostrando únicamente solicitudes pendientes por aprobar (ordenadas por fecha más reciente).'}
+              {filterStatus === 'Aprobado' && 'Mostrando solicitudes aprobadas.'}
+              {filterStatus === 'Rechazado' && 'Mostrando solicitudes rechazadas.'}
               {filterStatus === 'Todas' && 'Mostrando el historial completo de solicitudes recibidas.'}
             </p>
           </div>
@@ -233,89 +264,114 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredOrders.map(order => {
-            const isPending = order.status === 'Pendiente';
-            const isApproved = order.status === 'Aprobado';
-            const isRejected = order.status === 'Rechazado';
-            const totalItems = order.items ? order.items.reduce((sum, i) => sum + i.quantity, 0) : 0;
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {visibleOrders.map(order => {
+              const isPending = order.status === 'Pendiente';
+              const isApproved = order.status === 'Aprobado';
+              const isRejected = order.status === 'Rechazado';
+              const totalItems = order.items ? order.items.reduce((sum, i) => sum + i.quantity, 0) : 0;
 
-            return (
-              <div
-                key={order.id}
-                onClick={() => setSelectedOrderForModal(order)}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500/50 p-4 transition-all cursor-pointer flex flex-col justify-between group space-y-3"
-              >
-                {/* Header: N° Solicitud & Status Badge */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-                    Solicitud N° {order.orderNumber || order.id.slice(0, 8)}
-                  </span>
+              // Format date cleanly: e.g. "30/07/2026, 17:42"
+              const formattedDate = new Date(order.createdAt).toLocaleDateString('es-NI', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              });
 
-                  <div>
-                    {isPending && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
-                        <Clock className="w-3 h-3" /> Pendiente
-                      </span>
-                    )}
-                    {isApproved && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Aprobado
-                      </span>
-                    )}
-                    {isRejected && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
-                        <XCircle className="w-3 h-3 text-rose-600" /> Rechazado
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Customer name & Phone */}
-                <div>
-                  <div className="text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
-                    <User className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="truncate">{order.customerName}</span>
-                  </div>
-                  <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
-                    <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                    <span>{order.customerPhone}</span>
-                  </div>
-                </div>
-
-                {/* Info Pills & Price */}
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
-                      <ShoppingBag className="w-3 h-3 text-slate-400" />
-                      <span>{totalItems} producto{totalItems !== 1 ? 's' : ''}</span>
-                    </div>
-                    <span className="inline-block text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                      {order.paymentType === 'cuotas_2' && '2 Cuotas'}
-                      {order.paymentType === 'cuotas_4' && '4 Cuotas'}
-                      {(!order.paymentType || order.paymentType === 'contado') && 'Contado'}
-                    </span>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-[10px] text-slate-400 block font-medium">Monto Total:</span>
-                    <span className="text-base font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
-                      C$ {order.total.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Click action indicator */}
-                <button
-                  type="button"
-                  className="w-full py-2 bg-slate-50 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200 group-hover:border-emerald-600"
+              return (
+                <div
+                  key={order.id}
+                  onClick={() => setSelectedOrderForModal(order)}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500/50 p-4 transition-all cursor-pointer flex flex-col justify-between group space-y-3"
                 >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Ver Detalle y Gestionar</span>
-                </button>
-              </div>
-            );
-          })}
+                  {/* Header: N° Solicitud + FECHA DE SOLICITUD & Status Badge */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-xs font-extrabold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                        Solicitud N° {order.orderNumber || order.id.slice(0, 8)}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span>{formattedDate}</span>
+                      </span>
+                    </div>
+
+                    <div>
+                      {isPending && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
+                          <Clock className="w-3 h-3" /> Pendiente
+                        </span>
+                      )}
+                      {isApproved && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Aprobado
+                        </span>
+                      )}
+                      {isRejected && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
+                          <XCircle className="w-3 h-3 text-rose-600" /> Rechazado
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Customer name & Phone */}
+                  <div>
+                    <div className="text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="truncate">{order.customerName}</span>
+                    </div>
+                    <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
+                      <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span>{order.customerPhone}</span>
+                    </div>
+                  </div>
+
+                  {/* Info Pills & Price */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                        <ShoppingBag className="w-3 h-3 text-slate-400" />
+                        <span>{totalItems} producto{totalItems !== 1 ? 's' : ''}</span>
+                      </div>
+                      <span className="inline-block text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        {order.paymentType === 'cuotas_2' && '2 Cuotas'}
+                        {order.paymentType === 'cuotas_4' && '4 Cuotas'}
+                        {(!order.paymentType || order.paymentType === 'contado') && 'Contado'}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 block font-medium">Monto Total:</span>
+                      <span className="text-base font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
+                        C$ {order.total.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Click action indicator */}
+                  <button
+                    type="button"
+                    className="w-full py-2 bg-slate-50 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200 group-hover:border-emerald-600"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Ver Detalle y Gestionar</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Sentinel element for infinite scroll */}
+          {visibleCount < filteredOrders.length && (
+            <div ref={loadMoreRef} className="py-4 text-center text-xs font-semibold text-slate-400 flex items-center justify-center gap-2">
+              <Clock className="w-4 h-4 animate-spin text-emerald-600" />
+              <span>Cargando más solicitudes automáticamente...</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -329,8 +385,8 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                 <span className="font-mono text-xs font-extrabold text-emerald-400 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
                   N° {selectedOrderForModal.orderNumber || selectedOrderForModal.id.slice(0, 8)}
                 </span>
-                <span className="text-xs text-slate-300 font-medium hidden sm:inline">
-                  {new Date(selectedOrderForModal.createdAt).toLocaleString('es-NI', {
+                <span className="text-xs text-slate-300 font-medium">
+                  📅 {new Date(selectedOrderForModal.createdAt).toLocaleString('es-NI', {
                     dateStyle: 'medium',
                     timeStyle: 'short',
                   })}

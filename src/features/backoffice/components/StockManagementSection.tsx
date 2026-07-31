@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Product } from '../../../types';
-import { Edit, Trash2, Plus, Minus, Search, AlertCircle, Package } from 'lucide-react';
+import { Edit, Trash2, Plus, Minus, Search, AlertCircle, Package, Loader2 } from 'lucide-react';
 import { EditProductModal } from './EditProductModal';
 
 interface StockManagementSectionProps {
@@ -22,11 +22,36 @@ export const StockManagementSection: React.FC<StockManagementSectionProps> = ({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Automatic Infinite Scroll state (Charge 10 by 10)
+  const [visibleCount, setVisibleCount] = useState<number>(10);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [searchQuery]);
+
   const filteredProducts = products.filter(p => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
     return p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
   });
+
+  const visibleProducts = filteredProducts.slice(0, visibleCount);
+
+  // Automatic Infinite Scroll observer
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < filteredProducts.length) {
+          setVisibleCount(prev => prev + 10);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [visibleCount, filteredProducts.length]);
 
   const handleStockChange = async (product: Product, delta: number) => {
     const nextStock = Math.max(0, product.stock + delta);
@@ -83,121 +108,131 @@ export const StockManagementSection: React.FC<StockManagementSectionProps> = ({
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
-                  <th className="py-3 px-4">Producto</th>
-                  <th className="py-3 px-4">Categoría</th>
-                  <th className="py-3 px-4">Precio</th>
-                  <th className="py-3 px-4 text-center">Unidades en Stock</th>
-                  <th className="py-3 px-4 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {filteredProducts.map(product => {
-                  const isOutOfStock = product.stock <= 0;
-                  const isLowStock = product.stock > 0 && product.stock <= 5;
-                  const image = product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
+                    <th className="py-3 px-4">Producto</th>
+                    <th className="py-3 px-4">Categoría</th>
+                    <th className="py-3 px-4">Precio</th>
+                    <th className="py-3 px-4 text-center">Unidades en Stock</th>
+                    <th className="py-3 px-4 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {visibleProducts.map(product => {
+                    const isOutOfStock = product.stock <= 0;
+                    const isLowStock = product.stock > 0 && product.stock <= 5;
+                    const image = product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
 
-                  return (
-                    <tr key={product.id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* Product Column */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={image}
-                            alt={product.name}
-                            className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
-                            }}
-                          />
-                          <div className="min-w-0">
-                            <span className="font-bold text-slate-900 block truncate max-w-xs">
-                              {product.name}
-                            </span>
-                            <span className="text-[10px] text-slate-400 block font-mono">
-                              ID: {product.id}
-                            </span>
+                    return (
+                      <tr key={product.id} className="hover:bg-slate-50/80 transition-colors">
+                        {/* Product Column */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={image}
+                              alt={product.name}
+                              className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-900 block truncate max-w-xs">
+                                {product.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block font-mono">
+                                ID: {product.id}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Category */}
-                      <td className="py-3 px-4">
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700">
-                          {product.category}
-                        </span>
-                      </td>
-
-                      {/* Price */}
-                      <td className="py-3 px-4 font-extrabold text-slate-900">
-                        C$ {product.price.toFixed(2)}
-                      </td>
-
-                      {/* Stock Adjuster */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleStockChange(product, -1)}
-                            disabled={product.stock <= 0}
-                            className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all disabled:opacity-30"
-                            title="Restar 1 al stock"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-
-                          <span
-                            className={`px-3 py-1 rounded-xl text-xs font-black min-w-12 text-center border ${
-                              isOutOfStock
-                                ? 'bg-rose-100 text-rose-800 border-rose-200'
-                                : isLowStock
-                                ? 'bg-amber-100 text-amber-800 border-amber-200'
-                                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                            }`}
-                          >
-                            {product.stock}
+                        {/* Category */}
+                        <td className="py-3 px-4">
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700">
+                            {product.category}
                           </span>
+                        </td>
 
-                          <button
-                            onClick={() => handleStockChange(product, 1)}
-                            className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all"
-                            title="Sumar 1 al stock"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
+                        {/* Price */}
+                        <td className="py-3 px-4 font-extrabold text-slate-900">
+                          C$ {product.price.toFixed(2)}
+                        </td>
 
-                      {/* Actions */}
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => setEditingProduct(product)}
-                            className="p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                            title="Editar producto completo"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                        {/* Stock Adjuster */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleStockChange(product, -1)}
+                              disabled={product.stock <= 0}
+                              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all disabled:opacity-30"
+                              title="Restar 1 al stock"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
 
-                          <button
-                            disabled={deletingId === product.id}
-                            onClick={() => handleDeleteConfirm(product.id)}
-                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all disabled:opacity-40"
-                            title="Eliminar producto"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            <span
+                              className={`px-3 py-1 rounded-xl text-xs font-black min-w-12 text-center border ${
+                                isOutOfStock
+                                  ? 'bg-rose-100 text-rose-800 border-rose-200'
+                                  : isLowStock
+                                  ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              }`}
+                            >
+                              {product.stock}
+                            </span>
+
+                            <button
+                              onClick={() => handleStockChange(product, 1)}
+                              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all"
+                              title="Sumar 1 al stock"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setEditingProduct(product)}
+                              className="p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                              title="Editar producto completo"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              disabled={deletingId === product.id}
+                              onClick={() => handleDeleteConfirm(product.id)}
+                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all disabled:opacity-40"
+                              title="Eliminar producto"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
+
+          {/* Sentinel element for infinite scroll */}
+          {visibleCount < filteredProducts.length && (
+            <div ref={loadMoreRef} className="py-4 text-center text-xs font-semibold text-slate-400 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+              <span>Cargando más productos automáticamente...</span>
+            </div>
+          )}
         </div>
       )}
 

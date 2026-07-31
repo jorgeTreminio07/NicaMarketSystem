@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Product, CartItem } from '../../types';
 import { ProductCard } from './components/ProductCard';
 import { CategoryFilter } from './components/CategoryFilter';
 import { SearchBar } from './components/SearchBar';
 import { ProductDetailModal } from './components/ProductDetailModal';
-import { Package, Sparkles, RefreshCw } from 'lucide-react';
+import { Package, Sparkles, RefreshCw, Loader2 } from 'lucide-react';
 
 interface StoreViewProps {
   products: Product[];
@@ -24,6 +24,15 @@ export const StoreView: React.FC<StoreViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // Automatic Infinite Scroll state (Charge 10 by 10)
+  const [visibleCount, setVisibleCount] = useState<number>(10);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset visibleCount on filter change
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [selectedCategory, searchQuery]);
 
   // Extract unique categories from product list
   const categories = useMemo(() => {
@@ -60,6 +69,26 @@ export const StoreView: React.FC<StoreViewProps> = ({
     // Alphabetical order guarantee (A-Z)
     return result.sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
   }, [products, selectedCategory, searchQuery]);
+
+  // Paginated visible products
+  const visibleProducts = useMemo(() => {
+    return filteredProducts.slice(0, visibleCount);
+  }, [filteredProducts, visibleCount]);
+
+  // Automatic Infinite Scroll observer
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < filteredProducts.length) {
+          setVisibleCount(prev => prev + 10);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [visibleCount, filteredProducts.length]);
 
   // Check if product is in cart
   const isProductInCart = (productId: string) => {
@@ -164,19 +193,29 @@ export const StoreView: React.FC<StoreViewProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.map(product => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onSelectProduct={setSelectedProduct}
-              onAddToCart={(prod, e) => {
-                e.stopPropagation();
-                onAddToCart(prod, 1);
-              }}
-              isAdded={isProductInCart(product.id)}
-            />
-          ))}
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {visibleProducts.map(product => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onSelectProduct={setSelectedProduct}
+                onAddToCart={(prod, e) => {
+                  e.stopPropagation();
+                  onAddToCart(prod, 1);
+                }}
+                isAdded={isProductInCart(product.id)}
+              />
+            ))}
+          </div>
+
+          {/* Sentinel element for infinite scroll */}
+          {visibleCount < filteredProducts.length && (
+            <div ref={loadMoreRef} className="py-6 text-center text-xs font-semibold text-slate-400 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+              <span>Cargando más productos automáticamente...</span>
+            </div>
+          )}
         </div>
       )}
 
