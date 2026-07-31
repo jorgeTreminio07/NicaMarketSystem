@@ -355,7 +355,7 @@ async function seedSupabase() {
 }
 
 async function clearSupabase() {
-  console.log('Eliminando toda la información de la base de datos en Supabase...');
+  console.log('Eliminando toda la información de la base de datos...');
   try {
     await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
   } catch (e) {
@@ -366,8 +366,27 @@ async function clearSupabase() {
   } catch (e) {
     console.log('Aviso al vaciar productos:', e);
   }
+  try {
+    // Delete non-admin users from database
+    await supabase.from('users').delete().neq('email', DEFAULT_ADMIN_EMAIL.toLowerCase()).neq('email', 'admin');
+  } catch (e) {
+    console.log('Aviso al vaciar usuarios:', e);
+  }
+
   products = [];
   orders = [];
+
+  // Keep admin user in memory
+  users = users.filter(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() || u.email.toLowerCase() === 'admin' || u.id === '00000000-0000-4000-8000-000000000001');
+  if (users.length === 0) {
+    users = [{
+      id: '00000000-0000-4000-8000-000000000001',
+      email: DEFAULT_ADMIN_EMAIL,
+      password_hash: DEFAULT_ADMIN_PASS,
+      role: 'admin',
+      created_at: new Date().toISOString()
+    }];
+  }
 }
 
 async function loadDataFromSupabase() {
@@ -1192,6 +1211,61 @@ async function startServer() {
     res.status(201).json(safeUser);
   });
 
+  app.put('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { email, password, role } = req.body;
+
+    const userIndex = users.findIndex(u => u.id === id);
+    if (userIndex === -1) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    const user = users[userIndex];
+    const isPrimaryAdmin = user.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() ||
+                          user.email.toLowerCase() === 'admin' ||
+                          user.id === '00000000-0000-4000-8000-000000000001';
+
+    if (isPrimaryAdmin) {
+      return res.status(400).json({ error: 'El usuario administrador principal es intocable y no se puede editar.' });
+    }
+
+    if (email && String(email).trim()) {
+      const cleanedEmail = String(email).trim().toLowerCase();
+      if (users.some(u => u.id !== id && u.email.toLowerCase() === cleanedEmail)) {
+        return res.status(400).json({ error: 'El correo electrónico ya está en uso por otro usuario.' });
+      }
+      user.email = cleanedEmail;
+    }
+
+    if (password && String(password).trim().length > 0) {
+      user.password_hash = String(password).trim();
+    }
+
+    if (role) {
+      user.role = role === 'admin' ? 'admin' : 'staff';
+    }
+
+    try {
+      await supabase.from('users').update({
+        email: user.email,
+        password_hash: user.password_hash,
+        role: user.role
+      }).eq('id', id);
+    } catch (err) {
+      console.log('Error actualizando usuario en base de datos:', err);
+    }
+
+    const safeUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      createdAt: user.created_at
+    };
+
+    logApiCall('UPDATE_USER', `/api/users/${id}`, 'PUT', { email: user.email, role: user.role }, safeUser, 200);
+    res.json(safeUser);
+  });
+
   app.delete('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     const user = users.find(u => u.id === id);
@@ -1200,8 +1274,12 @@ async function startServer() {
       return res.status(404).json({ error: 'Usuario no encontrado.' });
     }
 
-    if (user.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase()) {
-      return res.status(400).json({ error: 'No se puede eliminar el usuario administrador principal.' });
+    const isPrimaryAdmin = user.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() ||
+                          user.email.toLowerCase() === 'admin' ||
+                          user.id === '00000000-0000-4000-8000-000000000001';
+
+    if (isPrimaryAdmin) {
+      return res.status(400).json({ error: 'El usuario administrador principal es intocable y no se puede eliminar.' });
     }
 
     users = users.filter(u => u.id !== id);
@@ -1209,7 +1287,7 @@ async function startServer() {
     try {
       await supabase.from('users').delete().eq('id', id);
     } catch (err) {
-      console.log('Error eliminando usuario en Supabase:', err);
+      console.log('Error eliminando usuario en base de datos:', err);
     }
 
     res.json({ success: true, message: 'Usuario eliminado correctamente.' });
@@ -1221,7 +1299,7 @@ async function startServer() {
 
     if (!verifyAdminCredentials(email, password)) {
       return res.status(403).json({
-        error: 'Acceso denegado. Se requieren credenciales válidas del usuario administrador (admin@nombredelatienda.com) para poblar la base de datos.'
+        error: 'Acceso denegado. Se requieren credenciales válidas del usuario administrador para poblar la base de datos.'
       });
     }
 
@@ -1229,7 +1307,7 @@ async function startServer() {
       await seedSupabase();
       res.json({
         success: true,
-        message: 'Base de datos poblada en Supabase correctamente por el usuario administrador.',
+        message: 'Base de datos poblada correctamente por el usuario administrador.',
         productsCount: products.length,
         ordersCount: orders.length
       });

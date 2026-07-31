@@ -191,6 +191,19 @@ export async function createUser(user: { email: string; password: string; role?:
   return res.json();
 }
 
+export async function updateUser(id: string, user: { email?: string; password?: string; role?: string }): Promise<import('../../types').BackofficeUser> {
+  const res = await fetch(`/api/users/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(user),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al actualizar el usuario');
+  }
+  return res.json();
+}
+
 export async function deleteUser(id: string): Promise<boolean> {
   const res = await fetch(`/api/users/${id}`, {
     method: 'DELETE',

@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { BackofficeUser } from '../../../types';
-import { getUsers, createUser, deleteUser } from '../../../infrastructure/api/apiClient';
-import { Users, UserPlus, Trash2, ShieldCheck, Mail, Lock, KeyRound, Loader2, CheckCircle2, AlertCircle, Code, Copy, Check } from 'lucide-react';
+import { getUsers, createUser, updateUser, deleteUser } from '../../../infrastructure/api/apiClient';
+import { Users, UserPlus, Trash2, ShieldCheck, Mail, Lock, KeyRound, Loader2, CheckCircle2, AlertCircle, Pencil, X, Save } from 'lucide-react';
 
 export const UserManagementSection: React.FC = () => {
   const [users, setUsers] = useState<BackofficeUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [showSqlScript, setShowSqlScript] = useState(false);
-  const [copiedSql, setCopiedSql] = useState(false);
 
-  // Form State
+  // Form State for Create
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'staff'>('staff');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Form State for Edit Modal
+  const [editingUser, setEditingUser] = useState<BackofficeUser | null>(null);
+  const [editEmail, setEditEmail] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editRole, setEditRole] = useState<'admin' | 'staff'>('staff');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -35,12 +40,12 @@ export const UserManagementSection: React.FC = () => {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      setMessage({ type: 'error', text: 'El correo electrónico y la contraseña son requeridos.' });
+      setMessage({ type: 'error', text: 'El usuario/correo y la contraseña son requeridos.' });
       return;
     }
 
-    if (password.trim().length < 6) {
-      setMessage({ type: 'error', text: 'La contraseña debe tener al menos 6 caracteres.' });
+    if (password.trim().length < 4) {
+      setMessage({ type: 'error', text: 'La contraseña debe tener al menos 4 caracteres.' });
       return;
     }
 
@@ -65,9 +70,51 @@ export const UserManagementSection: React.FC = () => {
     }
   };
 
+  const handleOpenEdit = (user: BackofficeUser) => {
+    setEditingUser(user);
+    setEditEmail(user.email);
+    setEditPassword('');
+    setEditRole(user.role === 'admin' ? 'admin' : 'staff');
+  };
+
+  const handleCloseEdit = () => {
+    setEditingUser(null);
+    setEditEmail('');
+    setEditPassword('');
+    setEditRole('staff');
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    if (!editEmail.trim()) {
+      setMessage({ type: 'error', text: 'El nombre de usuario/correo es obligatorio.' });
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const updated = await updateUser(editingUser.id, {
+        email: editEmail.trim(),
+        password: editPassword.trim() || undefined,
+        role: editRole
+      });
+
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? updated : u));
+      setMessage({ type: 'success', text: `Usuario ${updated.email} actualizado exitosamente.` });
+      handleCloseEdit();
+      setTimeout(() => setMessage(null), 4000);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al actualizar usuario');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   const handleDeleteUser = async (userId: string, userEmail: string) => {
-    if (userEmail.toLowerCase() === 'admin@admin.com') {
-      alert('El usuario administrador principal no se puede eliminar.');
+    if (userEmail.toLowerCase() === 'admin@admin.com' || userEmail.toLowerCase() === 'admin') {
+      alert('El usuario administrador principal es intocable y no se puede eliminar.');
       return;
     }
 
@@ -83,81 +130,10 @@ export const UserManagementSection: React.FC = () => {
     }
   };
 
-  const supabaseSqlScript = `-- ==========================================
--- SCRIPT DE TABLAS EN SUPABASE PARA LA TIENDA
--- ==========================================
-
--- 1. Tabla de Usuarios con contraseña encriptada (hash)
-CREATE TABLE IF NOT EXISTS public.users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'staff',
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 2. Tabla de Configuración de la Tienda
-CREATE TABLE IF NOT EXISTS public.store_settings (
-    id TEXT PRIMARY KEY DEFAULT 'default',
-    name TEXT NOT NULL DEFAULT 'NicaMarket',
-    description TEXT,
-    logo_url TEXT,
-    whatsapp_number TEXT NOT NULL DEFAULT '50589098184',
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 3. Tabla de Productos
-CREATE TABLE IF NOT EXISTS public.products (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    description TEXT,
-    price NUMERIC(10,2) NOT NULL DEFAULT 0,
-    category TEXT NOT NULL DEFAULT 'General',
-    stock INT NOT NULL DEFAULT 0,
-    images JSONB DEFAULT '[]'::jsonb,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    is_deleted BOOLEAN DEFAULT FALSE
-);
-
--- 4. Tabla de Solicitudes y Cartera de Pedidos
-CREATE TABLE IF NOT EXISTS public.orders (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_number TEXT,
-    customer_name TEXT NOT NULL,
-    customer_phone TEXT NOT NULL,
-    items JSONB DEFAULT '[]'::jsonb,
-    total NUMERIC(10,2) NOT NULL DEFAULT 0,
-    status TEXT NOT NULL DEFAULT 'Pendiente',
-    payment_type TEXT DEFAULT 'contado',
-    installment_count INT DEFAULT 1,
-    payment_schedule JSONB DEFAULT '[]'::jsonb,
-    payments_history JSONB DEFAULT '[]'::jsonb,
-    total_paid NUMERIC(10,2) DEFAULT 0,
-    credit_status TEXT DEFAULT 'En Proceso',
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    is_deleted BOOLEAN DEFAULT FALSE
-);
-
--- 5. Usuario Administrador por Defecto (Password encriptado SHA-512)
-INSERT INTO public.users (email, password_hash, role)
-VALUES (
-    'admin@admin.com',
-    '8ca91cae7fe5eb9cfec4466b8d96b1297dbfa455110bb51ec7ca3b00e84b80a42ea2d67aa3cb1be58a8a3cefb29ae6ec1df1ef3f48aa6173d1f1f0a202ec97bb',
-    'admin'
-) ON CONFLICT (email) DO NOTHING;
-`;
-
-  const copySqlToClipboard = () => {
-    navigator.clipboard.writeText(supabaseSqlScript);
-    setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2500);
-  };
-
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Header card with script launcher */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      {/* Header card */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 flex items-center justify-between gap-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold">
             <Users className="w-6 h-6 text-emerald-400" />
@@ -165,44 +141,11 @@ VALUES (
           <div>
             <h2 className="text-xl font-extrabold text-slate-900">Gestión de Usuarios del Backoffice</h2>
             <p className="text-xs text-slate-500">
-              Crea nuevos usuarios administradores o asistentes con contraseña encriptada en la tabla <strong className="text-slate-800">users</strong> de Supabase.
+              Administra los accesos del sistema. Crea, edita o elimina usuarios del sistema.
             </p>
           </div>
         </div>
-
-        <button
-          onClick={() => setShowSqlScript(!showSqlScript)}
-          className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-200 flex items-center gap-2 shrink-0"
-        >
-          <Code className="w-4 h-4 text-emerald-600" />
-          <span>{showSqlScript ? 'Ocultar Script SQL' : 'Ver Script SQL Supabase'}</span>
-        </button>
       </div>
-
-      {/* SQL Script Viewer Panel */}
-      {showSqlScript && (
-        <div className="bg-slate-950 text-slate-200 rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4 animate-in fade-in">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-              <Code className="w-4 h-4" />
-              <span>Script de Creación de Tablas en Supabase</span>
-            </div>
-            <button
-              onClick={copySqlToClipboard}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-all border border-slate-700 flex items-center gap-1.5"
-            >
-              {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedSql ? '¡Copiado!' : 'Copiar Script SQL'}</span>
-            </button>
-          </div>
-          <pre className="p-4 bg-slate-900 rounded-2xl text-[11px] font-mono text-emerald-300 overflow-x-auto leading-relaxed border border-slate-800 max-h-72">
-            {supabaseSqlScript}
-          </pre>
-          <p className="text-[11px] text-slate-400">
-            * El servidor Node/Express ya ejecuta estas migraciones automáticamente en memoria y Supabase, pero puedes copiar y ejecutar este script en el Editor SQL de Supabase si deseas verificar o estructurar manualmente las tablas.
-          </p>
-        </div>
-      )}
 
       {message && (
         <div
@@ -233,13 +176,13 @@ VALUES (
             <div>
               <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Correo Electrónico *</span>
+                <span>Usuario / Correo Electrónico *</span>
               </label>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="ejemplo@nombredelatienda.com"
+                placeholder="ej. asistente o usuario@tienda.com"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
                 required
               />
@@ -288,7 +231,7 @@ VALUES (
               ) : (
                 <>
                   <UserPlus className="w-4 h-4" />
-                  <span>Guardar Usuario en Supabase</span>
+                  <span>Guardar Usuario</span>
                 </>
               )}
             </button>
@@ -304,9 +247,6 @@ VALUES (
                 {users.length}
               </span>
             </h3>
-            <span className="text-[11px] text-slate-400 font-medium">
-              Encriptación SHA-512 Activa
-            </span>
           </div>
 
           {isLoading ? (
@@ -321,20 +261,20 @@ VALUES (
           ) : (
             <div className="divide-y divide-slate-100">
               {users.map(u => {
-                const isAdmin = u.email.toLowerCase() === 'admin@admin.com' || u.role === 'admin';
+                const isPrimaryAdmin = u.email.toLowerCase() === 'admin@admin.com' || u.email.toLowerCase() === 'admin';
 
                 return (
                   <div key={u.id} className="py-3.5 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold shrink-0 ${isAdmin ? 'bg-slate-900 text-emerald-400' : 'bg-slate-100 text-slate-700'}`}>
-                        {isAdmin ? <ShieldCheck className="w-5 h-5" /> : <Users className="w-4 h-4" />}
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold shrink-0 ${isPrimaryAdmin ? 'bg-slate-900 text-emerald-400' : 'bg-slate-100 text-slate-700'}`}>
+                        {isPrimaryAdmin ? <ShieldCheck className="w-5 h-5" /> : <Users className="w-4 h-4" />}
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-extrabold text-slate-900 truncate flex items-center gap-1.5">
                           <span>{u.email}</span>
-                          {isAdmin && (
+                          {isPrimaryAdmin && (
                             <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-700 border border-emerald-500/30">
-                              Admin Principal
+                              Admin Principal (Intocable)
                             </span>
                           )}
                         </p>
@@ -344,14 +284,23 @@ VALUES (
                       </div>
                     </div>
 
-                    {!isAdmin && (
-                      <button
-                        onClick={() => handleDeleteUser(u.id, u.email)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all shrink-0"
-                        title="Eliminar usuario"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    {!isPrimaryAdmin && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleOpenEdit(u)}
+                          className="p-2 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+                          title="Editar usuario"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(u.id, u.email)}
+                          className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                          title="Eliminar usuario"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
@@ -360,6 +309,105 @@ VALUES (
           )}
         </div>
       </div>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 sm:p-8 text-slate-900 shadow-2xl relative space-y-5">
+            <button
+              onClick={handleCloseEdit}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-all"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <Pencil className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Editar Usuario</h3>
+                <p className="text-xs text-slate-500">Actualiza las credenciales y rol del usuario</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Usuario / Correo Electrónico *</span>
+                </label>
+                <input
+                  type="text"
+                  value={editEmail}
+                  onChange={e => setEditEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Nueva Contraseña (Opcional)</span>
+                </label>
+                <input
+                  type="password"
+                  value={editPassword}
+                  onChange={e => setEditPassword(e.target.value)}
+                  placeholder="Dejar en blanco para no cambiar"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Si no deseas modificar la contraseña actual, déjala vacía.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Rol de Usuario</span>
+                </label>
+                <select
+                  value={editRole}
+                  onChange={e => setEditRole(e.target.value as 'admin' | 'staff')}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-semibold text-slate-800"
+                >
+                  <option value="staff">Personal / Asistente (Staff)</option>
+                  <option value="admin">Administrador (Admin)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleCloseEdit}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 active:scale-95"
+                >
+                  {isSavingEdit ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Guardar Cambios</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

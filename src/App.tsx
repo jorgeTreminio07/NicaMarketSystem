@@ -87,13 +87,13 @@ export default function App() {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  // Check Supabase connection health & load initial store settings
+  // Check DB connection health & load initial store settings
   useEffect(() => {
     fetch('/api/supabase-status')
       .then(res => res.json())
       .then(data => {
         if (data.connected) {
-          setSupabaseStatus({ connected: true, message: 'Supabase conectado exitosamente' });
+          setSupabaseStatus({ connected: true, message: 'Base de datos conectada exitosamente' });
         } else {
           setSupabaseStatus({ connected: false, message: 'Modo local activo' });
         }
@@ -413,7 +413,7 @@ export default function App() {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Supabase Status Banner inside Backoffice */}
+              {/* Database Status Banner inside Backoffice */}
               {supabaseStatus && (
                 <div className="max-w-7xl mx-auto px-4 pt-4">
                   <div className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
@@ -423,7 +423,7 @@ export default function App() {
                   }`}>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      <span className="font-semibold">Estado de Base de Datos Supabase:</span>
+                      <span className="font-semibold">Estado de Base de Datos:</span>
                       <span>{supabaseStatus.message}</span>
                       {currentUser && (
                         <span className="ml-2 font-mono text-emerald-400">
@@ -431,12 +431,13 @@ export default function App() {
                         </span>
                       )}
                     </div>
-                    <span className="font-mono text-[10px] opacity-80">https://xjiwhdnrxpsbbegqjicp.supabase.co</span>
                   </div>
                 </div>
               )}
 
               <BackofficeView
+                currentUser={currentUser}
+                isAdmin={isAdmin}
                 products={products}
                 orders={orders}
                 onApproveOrder={handleApproveOrder}
@@ -487,7 +488,7 @@ export default function App() {
               </div>
               <div>
                 <h3 className="text-lg font-extrabold text-white">Acceso al Backoffice</h3>
-                <p className="text-xs text-slate-400">Autenticación de usuarios vía Supabase</p>
+                <p className="text-xs text-slate-400">Autenticación de usuarios autorizados</p>
               </div>
             </div>
 

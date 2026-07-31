@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Product, Order, PaymentType, StoreSettings } from '../../types';
+import { Product, Order, PaymentType, StoreSettings, BackofficeUser } from '../../types';
 import { OrdersSection } from './components/OrdersSection';
 import { StockManagementSection } from './components/StockManagementSection';
 import { AddProductSection } from './components/AddProductSection';
@@ -9,10 +9,11 @@ import { StoreSettingsSection } from './components/StoreSettingsSection';
 import { UserManagementSection } from './components/UserManagementSection';
 import { AdminAuthModal } from './components/AdminAuthModal';
 import { Inbox, Layers, PlusCircle, ShieldCheck, RefreshCw, Database, CreditCard, BarChart3, Trash2, Sparkles, Loader2, Store, Users } from 'lucide-react';
-import { isSupabaseConfigured } from '../../infrastructure/supabase/supabaseClient';
 import { seedDatabase, clearDatabase } from '../../infrastructure/api/apiClient';
 
 interface BackofficeViewProps {
+  currentUser?: BackofficeUser | null;
+  isAdmin?: boolean;
   products: Product[];
   orders: Order[];
   onApproveOrder: (orderId: string, paymentType?: PaymentType) => Promise<void>;
@@ -29,6 +30,8 @@ interface BackofficeViewProps {
 }
 
 export const BackofficeView: React.FC<BackofficeViewProps> = ({
+  currentUser,
+  isAdmin,
   products,
   orders,
   onApproveOrder,
@@ -46,6 +49,8 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
   const [subTab, setSubTab] = useState<'orders' | 'credits' | 'reports' | 'stock' | 'add' | 'settings' | 'users'>('orders');
   const [isOperatingDb, setIsOperatingDb] = useState(false);
   const [dbMessage, setDbMessage] = useState<string | null>(null);
+
+  const isSystemAdmin = isAdmin || currentUser?.role === 'admin' || currentUser?.email.toLowerCase() === 'admin' || currentUser?.email.toLowerCase() === 'admin@admin.com';
 
   // Admin Auth Modal state
   const [adminAuthModal, setAdminAuthModal] = useState<{
@@ -101,38 +106,42 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
           <div className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-medium flex items-center gap-2 text-slate-300 justify-center">
             <Database className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>
-              Backend: <strong className="text-white">{isSupabaseConfigured ? 'Supabase DB' : 'Express REST Engine'}</strong>
+              Sistema: <strong className="text-white">Base de Datos Activa</strong>
             </span>
           </div>
 
           <div className="flex items-center gap-2 justify-end">
-            <button
-              onClick={() => handleOpenAuthModal('seed')}
-              disabled={isLoading || isOperatingDb}
-              className="px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95"
-              title="Poblar base de datos con datos de prueba (requiere credenciales de admin)"
-            >
-              {isOperatingDb ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4" />
-              )}
-              <span className="hidden sm:inline">Poblar Datos</span>
-            </button>
+            {isSystemAdmin && (
+              <>
+                <button
+                  onClick={() => handleOpenAuthModal('seed')}
+                  disabled={isLoading || isOperatingDb}
+                  className="px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95"
+                  title="Poblar base de datos con datos de prueba"
+                >
+                  {isOperatingDb ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  <span className="hidden sm:inline">Poblar Datos</span>
+                </button>
 
-            <button
-              onClick={() => handleOpenAuthModal('clear')}
-              disabled={isLoading || isOperatingDb}
-              className="px-3 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/20 active:scale-95"
-              title="Vaciar toda la información de la base de datos (requiere credenciales de admin)"
-            >
-              {isOperatingDb ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Trash2 className="w-4 h-4" />
-              )}
-              <span className="hidden sm:inline">Vaciar DB</span>
-            </button>
+                <button
+                  onClick={() => handleOpenAuthModal('clear')}
+                  disabled={isLoading || isOperatingDb}
+                  className="px-3 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/20 active:scale-95"
+                  title="Vaciar toda la información de la base de datos"
+                >
+                  {isOperatingDb ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  <span className="hidden sm:inline">Vaciar DB</span>
+                </button>
+              </>
+            )}
 
             <button
               onClick={onRefresh}
@@ -242,17 +251,19 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
           <span>Datos de la Tienda</span>
         </button>
 
-        <button
-          onClick={() => setSubTab('users')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-            subTab === 'users'
-              ? 'bg-slate-900 text-white shadow-md'
-              : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
-          }`}
-        >
-          <Users className="w-4 h-4 text-emerald-400" />
-          <span>Usuarios</span>
-        </button>
+        {isSystemAdmin && (
+          <button
+            onClick={() => setSubTab('users')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+              subTab === 'users'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+            }`}
+          >
+            <Users className="w-4 h-4 text-emerald-400" />
+            <span>Usuarios</span>
+          </button>
+        )}
       </div>
 
       {/* Sub-Tab Content */}
@@ -305,9 +316,10 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
         />
       )}
 
-      {subTab === 'users' && (
+      {subTab === 'users' && isSystemAdmin && (
         <UserManagementSection />
       )}
+
 
       {/* Admin Credentials Auth Modal */}
       <AdminAuthModal
