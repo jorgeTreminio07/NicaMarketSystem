@@ -501,13 +501,13 @@ export default function App() {
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-400 mb-1 flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Usuario (Correo Electrónico)</span>
+                  <span>Usuario</span>
                 </label>
                 <input
-                  type="email"
+                  type="text"
                   value={loginEmail}
                   onChange={e => setLoginEmail(e.target.value)}
-                  placeholder="admin@admin.com"
+                  placeholder="usuario"
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all font-medium"
                   required
                 />
@@ -522,7 +522,7 @@ export default function App() {
                   type="password"
                   value={loginPassword}
                   onChange={e => setLoginPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="contraseña"
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all font-mono text-sm"
                   required
                 />

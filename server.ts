@@ -423,25 +423,31 @@ async function loadDataFromSupabase() {
       }));
     }
 
-    // Ensure default admin user exists
-    const hasAdmin = users.some(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase());
-    if (!hasAdmin) {
-      const adminUser: UserRow = {
+    // Always ensure default admin user exists and has the updated password hash
+    const adminHash = hashPassword(DEFAULT_ADMIN_PASS);
+    const adminIdx = users.findIndex(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase());
+
+    if (adminIdx >= 0) {
+      users[adminIdx].password_hash = adminHash;
+      users[adminIdx].role = 'admin';
+    } else {
+      users.unshift({
         id: 'u0000000-0000-4000-8000-000000000001',
         email: DEFAULT_ADMIN_EMAIL,
-        password_hash: hashPassword(DEFAULT_ADMIN_PASS),
+        password_hash: adminHash,
         role: 'admin',
         created_at: new Date().toISOString()
-      };
-      users.unshift(adminUser);
-      await supabase.from('users').upsert([{
-        id: adminUser.id,
-        email: adminUser.email,
-        password_hash: adminUser.password_hash,
-        role: adminUser.role,
-        created_at: adminUser.created_at
-      }]);
+      });
     }
+
+    const mainAdmin = users.find(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase())!;
+    await supabase.from('users').upsert([{
+      id: mainAdmin.id,
+      email: mainAdmin.email,
+      password_hash: mainAdmin.password_hash,
+      role: mainAdmin.role,
+      created_at: mainAdmin.created_at
+    }]);
 
     console.log(`Carga inicial desde Supabase completada: ${products.length} productos, ${orders.length} órdenes, ${users.length} usuarios.`);
   } catch (err) {
@@ -1034,11 +1040,56 @@ async function startServer() {
   app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ error: 'Usuario (email) y contraseña son requeridos.' });
+      return res.status(400).json({ error: 'Usuario y contraseña son requeridos.' });
     }
 
     const cleanedEmail = String(email).trim().toLowerCase();
-    const inputHash = hashPassword(String(password).trim());
+    const rawPass = String(password).trim();
+    const inputHash = hashPassword(rawPass);
+
+    // Ensure default admin works reliably
+    if (cleanedEmail === DEFAULT_ADMIN_EMAIL.toLowerCase() && rawPass === DEFAULT_ADMIN_PASS) {
+      let adminUser = users.find(u => u.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase());
+      if (!adminUser) {
+        adminUser = {
+          id: 'u0000000-0000-4000-8000-000000000001',
+          email: DEFAULT_ADMIN_EMAIL,
+          password_hash: inputHash,
+          role: 'admin',
+          created_at: new Date().toISOString()
+        };
+        users.unshift(adminUser);
+      } else {
+        adminUser.password_hash = inputHash;
+        adminUser.role = 'admin';
+      }
+
+      try {
+        await supabase.from('users').upsert([{
+          id: adminUser.id,
+          email: adminUser.email,
+          password_hash: adminUser.password_hash,
+          role: adminUser.role,
+          created_at: adminUser.created_at
+        }]);
+      } catch (err) {
+        console.log('Error sincronizando admin en Supabase:', err);
+      }
+
+      const responseUser = {
+        id: adminUser.id,
+        email: adminUser.email,
+        role: adminUser.role,
+        createdAt: adminUser.created_at
+      };
+
+      logApiCall('USER_LOGIN', '/api/auth/login', 'POST', { email: cleanedEmail }, responseUser, 200);
+      return res.json({
+        success: true,
+        message: 'Inicio de sesión exitoso.',
+        user: responseUser
+      });
+    }
 
     const user = users.find(u => u.email.toLowerCase() === cleanedEmail);
     if (!user || user.password_hash !== inputHash) {

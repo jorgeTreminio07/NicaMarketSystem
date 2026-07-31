@@ -81,10 +81,10 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               <span>Usuario Administrador *</span>
             </label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="admin@admin.com"
+              placeholder="usuario"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
               required
             />
@@ -99,7 +99,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••••••"
+              placeholder="contraseña"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
               required
             />
