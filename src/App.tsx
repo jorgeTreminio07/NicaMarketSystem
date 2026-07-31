@@ -67,8 +67,8 @@ export default function App() {
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
   // Login form state
-  const [loginEmail, setLoginEmail] = useState<string>('admin@nombredelatienda.com');
-  const [loginPassword, setLoginPassword] = useState<string>('850012cf-2945-4293-a2d5-6b2956d15cfb');
+  const [loginEmail, setLoginEmail] = useState<string>('');
+  const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
 
@@ -507,7 +507,7 @@ export default function App() {
                   type="email"
                   value={loginEmail}
                   onChange={e => setLoginEmail(e.target.value)}
-                  placeholder="admin@nombredelatienda.com"
+                  placeholder="admin@admin.com"
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all font-medium"
                   required
                 />

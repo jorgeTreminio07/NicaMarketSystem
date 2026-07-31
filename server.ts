@@ -68,7 +68,7 @@ function hashPassword(password: string): string {
   return crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
 }
 
-const DEFAULT_ADMIN_EMAIL = 'admin@nombredelatienda.com';
+const DEFAULT_ADMIN_EMAIL = 'admin@admin.com';
 const DEFAULT_ADMIN_PASS = '850012cf-2945-4293-a2d5-6b2956d15cfb';
 
 // Initial Store Settings

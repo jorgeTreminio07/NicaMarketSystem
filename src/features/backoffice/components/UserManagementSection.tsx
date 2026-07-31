@@ -66,7 +66,7 @@ export const UserManagementSection: React.FC = () => {
   };
 
   const handleDeleteUser = async (userId: string, userEmail: string) => {
-    if (userEmail.toLowerCase() === 'admin@nombredelatienda.com') {
+    if (userEmail.toLowerCase() === 'admin@admin.com') {
       alert('El usuario administrador principal no se puede eliminar.');
       return;
     }
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
 -- 5. Usuario Administrador por Defecto (Password encriptado SHA-512)
 INSERT INTO public.users (email, password_hash, role)
 VALUES (
-    'admin@nombredelatienda.com',
+    'admin@admin.com',
     '8ca91cae7fe5eb9cfec4466b8d96b1297dbfa455110bb51ec7ca3b00e84b80a42ea2d67aa3cb1be58a8a3cefb29ae6ec1df1ef3f48aa6173d1f1f0a202ec97bb',
     'admin'
 ) ON CONFLICT (email) DO NOTHING;
@@ -321,7 +321,7 @@ VALUES (
           ) : (
             <div className="divide-y divide-slate-100">
               {users.map(u => {
-                const isAdmin = u.email.toLowerCase() === 'admin@nombredelatienda.com';
+                const isAdmin = u.email.toLowerCase() === 'admin@admin.com' || u.role === 'admin';
 
                 return (
                   <div key={u.id} className="py-3.5 flex items-center justify-between gap-4">

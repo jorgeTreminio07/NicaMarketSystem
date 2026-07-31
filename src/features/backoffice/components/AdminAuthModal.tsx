@@ -84,7 +84,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="admin@nombredelatienda.com"
+              placeholder="admin@admin.com"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
               required
             />
