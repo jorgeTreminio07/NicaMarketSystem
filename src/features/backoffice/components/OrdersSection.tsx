@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Order, Product, PaymentType } from '../../../types';
+import { Order, OrderItem, Product, PaymentType } from '../../../types';
 import { CheckCircle2, XCircle, Clock, Send, Phone, User, Calendar, MessageSquare, Trash2, Search, X, Eye, ShoppingBag, AlertTriangle } from 'lucide-react';
 import { generateApprovalWhatsAppUrl, generateRejectionWhatsAppUrl, formatPaymentMethodText } from '../../../utils/whatsapp';
 
@@ -11,6 +11,30 @@ interface OrdersSectionProps {
   onDeleteOrder: (orderId: string) => Promise<void>;
   onUpdatePaymentType?: (orderId: string, paymentType: PaymentType) => Promise<void>;
   isLoading: boolean;
+}
+
+function getItemEffectivePrice(item: OrderItem, products: Product[]): { unitPrice: number; originalPrice?: number; discountPercent?: number } {
+  const prod = products.find(p => String(p.id) === String(item.productId));
+  const discountPercent = prod?.discountPercent || 0;
+  if (prod && discountPercent > 0) {
+    const discounted = prod.price * (1 - discountPercent / 100);
+    return {
+      unitPrice: discounted,
+      originalPrice: prod.price,
+      discountPercent
+    };
+  }
+  return { unitPrice: Number(item.price) || 0 };
+}
+
+function calculateEffectiveOrderTotal(order: Order, products: Product[]): number {
+  if (!order.items || order.items.length === 0) return order.total;
+  let computed = 0;
+  for (const item of order.items) {
+    const { unitPrice } = getItemEffectivePrice(item, products);
+    computed += unitPrice * item.quantity;
+  }
+  return computed > 0 ? computed : order.total;
 }
 
 export const OrdersSection: React.FC<OrdersSectionProps> = ({
@@ -116,9 +140,21 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
   const handleApprove = async (order: Order) => {
     setProcessingId(order.id);
     const paymentTypeToUse = selectedPaymentTypes[order.id] || order.paymentType || 'contado';
+    const effectiveItems = (order.items || []).map(item => {
+      const { unitPrice } = getItemEffectivePrice(item, products);
+      return { ...item, price: unitPrice };
+    });
+    const effectiveTotal = calculateEffectiveOrderTotal(order, products);
+
     try {
       await onApproveOrder(order.id, paymentTypeToUse);
-      const updatedOrder: Order = { ...order, paymentType: paymentTypeToUse, status: 'Aprobado' };
+      const updatedOrder: Order = {
+        ...order,
+        items: effectiveItems,
+        total: effectiveTotal,
+        paymentType: paymentTypeToUse,
+        status: 'Aprobado'
+      };
       const whatsappUrl = generateApprovalWhatsAppUrl(updatedOrder);
       window.open(whatsappUrl, '_blank');
       setSelectedOrderForModal(null);
@@ -387,7 +423,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                     <div className="text-right">
                       <span className="text-[10px] text-slate-400 block font-medium">Monto Total:</span>
                       <span className="text-base font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
-                        C$ {order.total.toFixed(2)}
+                        C$ {calculateEffectiveOrderTotal(order, products).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -418,6 +454,8 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
       {/* DETAIL AND ACTION MODAL FOR A SELECTED ORDER */}
       {selectedOrderForModal && (() => {
         const modalStockInfo = getInsufficientStockInfo(selectedOrderForModal);
+        const calculatedModalTotal = calculateEffectiveOrderTotal(selectedOrderForModal, products);
+
         return (
           <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
@@ -515,12 +553,12 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                       onChange={e => handlePaymentTypeChange(selectedOrderForModal, e.target.value as PaymentType)}
                       className="w-full text-xs font-bold bg-white border border-slate-300 rounded-xl p-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     >
-                      <option value="contado">De Contado (C$ {selectedOrderForModal.total.toFixed(2)})</option>
-                      <option value="cuotas_2">2 Cuotas Quincenales (2x C$ {(selectedOrderForModal.total / 2).toFixed(2)})</option>
-                      <option value="cuotas_4">4 Cuotas Semanales (4x C$ {(selectedOrderForModal.total / 4).toFixed(2)})</option>
+                      <option value="contado">De Contado (C$ {calculatedModalTotal.toFixed(2)})</option>
+                      <option value="cuotas_2">2 Cuotas Quincenales (2x C$ {(calculatedModalTotal / 2).toFixed(2)})</option>
+                      <option value="cuotas_4">4 Cuotas Semanales (4x C$ {(calculatedModalTotal / 4).toFixed(2)})</option>
                     </select>
                     <p className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 p-2 rounded-lg border border-emerald-200/60">
-                      {formatPaymentMethodText(selectedPaymentTypes[selectedOrderForModal.id] || selectedOrderForModal.paymentType || 'contado', selectedOrderForModal.total)}
+                      {formatPaymentMethodText(selectedPaymentTypes[selectedOrderForModal.id] || selectedOrderForModal.paymentType || 'contado', calculatedModalTotal)}
                     </p>
                   </div>
                 </div>
@@ -530,9 +568,11 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                   <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Detalle de Productos Solicitados:</h4>
                   <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 divide-y divide-slate-200/80">
                     {selectedOrderForModal.items.map((item, idx) => {
-                      const itemProd = products.find(p => p.id === item.productId);
+                      const itemProd = products.find(p => String(p.id) === String(item.productId));
                       const currentStk = itemProd ? itemProd.stock : 0;
                       const isLowStk = item.quantity > currentStk;
+                      const { unitPrice, originalPrice, discountPercent } = getItemEffectivePrice(item, products);
+                      const itemTotal = unitPrice * item.quantity;
 
                       return (
                         <div key={idx} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
@@ -542,6 +582,15 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                             </span>
                             <div>
                               <span className="font-semibold text-slate-900">{item.productName}</span>
+                              {discountPercent ? (
+                                <span className="block text-[10px] text-rose-600 font-bold">
+                                  C$ {unitPrice.toFixed(2)} c/u <span className="line-through text-slate-400 font-normal">C$ {originalPrice?.toFixed(2)}</span> (-{discountPercent}% OFF)
+                                </span>
+                              ) : (
+                                <span className="block text-[10px] text-slate-500 font-medium">
+                                  C$ {unitPrice.toFixed(2)} c/u
+                                </span>
+                              )}
                               {isLowStk && (
                                 <span className="block text-[10px] text-rose-600 font-bold">
                                   ⚠️ Quedan solo {currentStk} unidad(es) en inventario
@@ -550,7 +599,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                             </div>
                           </div>
                           <span className="font-extrabold text-slate-900">
-                            C$ {(item.price * item.quantity).toFixed(2)}
+                            C$ {itemTotal.toFixed(2)}
                           </span>
                         </div>
                       );
@@ -559,7 +608,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
 
                   <div className="flex justify-between items-center pt-2 px-1 text-sm font-extrabold text-slate-900">
                     <span>Total de la Solicitud:</span>
-                    <span className="text-emerald-600 text-xl font-black">C$ {selectedOrderForModal.total.toFixed(2)}</span>
+                    <span className="text-emerald-600 text-xl font-black">C$ {calculatedModalTotal.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
