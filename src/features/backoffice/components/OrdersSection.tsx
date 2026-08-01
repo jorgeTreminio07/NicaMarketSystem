@@ -13,30 +13,6 @@ interface OrdersSectionProps {
   isLoading: boolean;
 }
 
-function getItemEffectivePrice(item: OrderItem, products: Product[]): { unitPrice: number; originalPrice?: number; discountPercent?: number } {
-  const prod = products.find(p => String(p.id) === String(item.productId));
-  const discountPercent = prod?.discountPercent || 0;
-  if (prod && discountPercent > 0) {
-    const discounted = prod.price * (1 - discountPercent / 100);
-    return {
-      unitPrice: discounted,
-      originalPrice: prod.price,
-      discountPercent
-    };
-  }
-  return { unitPrice: Number(item.price) || 0 };
-}
-
-function calculateEffectiveOrderTotal(order: Order, products: Product[]): number {
-  if (!order.items || order.items.length === 0) return order.total;
-  let computed = 0;
-  for (const item of order.items) {
-    const { unitPrice } = getItemEffectivePrice(item, products);
-    computed += unitPrice * item.quantity;
-  }
-  return computed > 0 ? computed : order.total;
-}
-
 export const OrdersSection: React.FC<OrdersSectionProps> = ({
   orders,
   products,
@@ -140,18 +116,11 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
   const handleApprove = async (order: Order) => {
     setProcessingId(order.id);
     const paymentTypeToUse = selectedPaymentTypes[order.id] || order.paymentType || 'contado';
-    const effectiveItems = (order.items || []).map(item => {
-      const { unitPrice } = getItemEffectivePrice(item, products);
-      return { ...item, price: unitPrice };
-    });
-    const effectiveTotal = calculateEffectiveOrderTotal(order, products);
 
     try {
       await onApproveOrder(order.id, paymentTypeToUse);
       const updatedOrder: Order = {
         ...order,
-        items: effectiveItems,
-        total: effectiveTotal,
         paymentType: paymentTypeToUse,
         status: 'Aprobado'
       };
@@ -423,7 +392,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                     <div className="text-right">
                       <span className="text-[10px] text-slate-400 block font-medium">Monto Total:</span>
                       <span className="text-base font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
-                        C$ {calculateEffectiveOrderTotal(order, products).toFixed(2)}
+                        C$ {order.total.toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -454,7 +423,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
       {/* DETAIL AND ACTION MODAL FOR A SELECTED ORDER */}
       {selectedOrderForModal && (() => {
         const modalStockInfo = getInsufficientStockInfo(selectedOrderForModal);
-        const calculatedModalTotal = calculateEffectiveOrderTotal(selectedOrderForModal, products);
+        const calculatedModalTotal = selectedOrderForModal.total;
 
         return (
           <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
@@ -571,7 +540,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                       const itemProd = products.find(p => String(p.id) === String(item.productId));
                       const currentStk = itemProd ? itemProd.stock : 0;
                       const isLowStk = item.quantity > currentStk;
-                      const { unitPrice, originalPrice, discountPercent } = getItemEffectivePrice(item, products);
+                      const unitPrice = Number(item.price) || 0;
                       const itemTotal = unitPrice * item.quantity;
 
                       return (
@@ -582,15 +551,9 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                             </span>
                             <div>
                               <span className="font-semibold text-slate-900">{item.productName}</span>
-                              {discountPercent ? (
-                                <span className="block text-[10px] text-rose-600 font-bold">
-                                  C$ {unitPrice.toFixed(2)} c/u <span className="line-through text-slate-400 font-normal">C$ {originalPrice?.toFixed(2)}</span> (-{discountPercent}% OFF)
-                                </span>
-                              ) : (
-                                <span className="block text-[10px] text-slate-500 font-medium">
-                                  C$ {unitPrice.toFixed(2)} c/u
-                                </span>
-                              )}
+                              <span className="block text-[10px] text-slate-500 font-medium">
+                                C$ {unitPrice.toFixed(2)} c/u
+                              </span>
                               {isLowStk && (
                                 <span className="block text-[10px] text-rose-600 font-bold">
                                   ⚠️ Quedan solo {currentStk} unidad(es) en inventario

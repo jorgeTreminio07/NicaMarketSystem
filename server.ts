@@ -183,48 +183,6 @@ function mapProductToRow(p: Product) {
 
 import { generatePaymentSchedule, recalculateCreditState, getInstallmentCount } from './src/utils/paymentUtils';
 
-function normalizeOrderWithDiscounts(order: Order): Order {
-  if (order.items && order.items.length > 0) {
-    let computedTotal = 0;
-    order.items = order.items.map(item => {
-      const prod = products.find(p => String(p.id) === String(item.productId));
-      let unitPrice = Number(item.price) || 0;
-      if (prod && prod.discountPercent && prod.discountPercent > 0) {
-        unitPrice = prod.price * (1 - prod.discountPercent / 100);
-      } else if (prod) {
-        unitPrice = prod.price;
-      }
-      const qty = Math.max(1, Number(item.quantity) || 1);
-      computedTotal += unitPrice * qty;
-
-      return {
-        ...item,
-        price: unitPrice
-      };
-    });
-
-    const finalTotal = Math.round(computedTotal * 100) / 100;
-    if (finalTotal > 0) {
-      order.total = finalTotal;
-    }
-  }
-
-  if (order.status === 'Aprobado') {
-    const pType = order.paymentType || 'contado';
-    order.installmentCount = getInstallmentCount(pType);
-    order.paymentSchedule = generatePaymentSchedule(order.total, pType, order.createdAt);
-    if (!order.paymentsHistory) {
-      order.paymentsHistory = [];
-    }
-    const creditState = recalculateCreditState(order.total, order.paymentSchedule, order.paymentsHistory);
-    order.totalPaid = creditState.totalPaid;
-    order.creditStatus = creditState.creditStatus;
-    order.paymentSchedule = creditState.updatedSchedule;
-  }
-
-  return order;
-}
-
 function mapOrderFromRow(row: any): Order {
   const pType = row.payment_type || row.paymentType || 'contado';
   const history = Array.isArray(row.payments_history) ? row.payments_history : Array.isArray(row.paymentsHistory) ? row.paymentsHistory : [];
@@ -237,7 +195,7 @@ function mapOrderFromRow(row: any): Order {
 
   const creditInfo = recalculateCreditState(total, schedule, history);
 
-  const order: Order = {
+  return {
     id: String(row.id),
     orderNumber: String(row.order_number || row.orderNumber || generate10DigitNumber()),
     customerName: row.customer_name || row.customerName || '',
@@ -255,8 +213,6 @@ function mapOrderFromRow(row: any): Order {
     updatedAt: row.updated_at || row.updatedAt,
     isDeleted: row.is_deleted === true || row.isDeleted === true || false
   };
-
-  return normalizeOrderWithDiscounts(order);
 }
 
 function mapOrderToRow(o: Order) {
@@ -865,8 +821,23 @@ async function startServer() {
         order.paymentType = paymentType;
       }
 
-      // Automatically normalize items, total, payment schedule, and credit state with discounts
-      normalizeOrderWithDiscounts(order);
+      const pType = order.paymentType || 'contado';
+      order.installmentCount = getInstallmentCount(pType);
+      
+      if (order.status === 'Aprobado') {
+        if (!order.paymentSchedule || order.paymentSchedule.length === 0 || paymentType) {
+          order.paymentSchedule = generatePaymentSchedule(order.total, pType, order.createdAt);
+        }
+        if (!order.paymentsHistory) {
+          order.paymentsHistory = [];
+        }
+
+        const creditState = recalculateCreditState(order.total, order.paymentSchedule, order.paymentsHistory);
+        order.totalPaid = creditState.totalPaid;
+        order.creditStatus = creditState.creditStatus;
+        order.paymentSchedule = creditState.updatedSchedule;
+      }
+      order.updatedAt = new Date().toISOString();
     } else {
       if (status) {
         order.status = status;
@@ -874,7 +845,23 @@ async function startServer() {
       if (paymentType === 'contado' || paymentType === 'cuotas_2' || paymentType === 'cuotas_4') {
         order.paymentType = paymentType;
       }
-      normalizeOrderWithDiscounts(order);
+      const pType = order.paymentType || 'contado';
+      order.installmentCount = getInstallmentCount(pType);
+      
+      if (order.status === 'Aprobado') {
+        if (!order.paymentSchedule || order.paymentSchedule.length === 0 || paymentType) {
+          order.paymentSchedule = generatePaymentSchedule(order.total, pType, order.createdAt);
+        }
+        if (!order.paymentsHistory) {
+          order.paymentsHistory = [];
+        }
+
+        const creditState = recalculateCreditState(order.total, order.paymentSchedule, order.paymentsHistory);
+        order.totalPaid = creditState.totalPaid;
+        order.creditStatus = creditState.creditStatus;
+        order.paymentSchedule = creditState.updatedSchedule;
+      }
+      order.updatedAt = new Date().toISOString();
     }
 
     try {
@@ -935,7 +922,14 @@ async function startServer() {
 
     order.paymentsHistory.push(newAbono);
 
-    normalizeOrderWithDiscounts(order);
+    if (!order.paymentSchedule || order.paymentSchedule.length === 0) {
+      order.paymentSchedule = generatePaymentSchedule(order.total, order.paymentType, order.createdAt);
+    }
+
+    const creditState = recalculateCreditState(order.total, order.paymentSchedule, order.paymentsHistory);
+    order.totalPaid = creditState.totalPaid;
+    order.creditStatus = creditState.creditStatus;
+    order.paymentSchedule = creditState.updatedSchedule;
     order.updatedAt = new Date().toISOString();
 
     try {
@@ -996,7 +990,14 @@ async function startServer() {
       note: note !== undefined ? String(note).trim() : order.paymentsHistory[abonoIndex].note
     };
 
-    normalizeOrderWithDiscounts(order);
+    if (!order.paymentSchedule || order.paymentSchedule.length === 0) {
+      order.paymentSchedule = generatePaymentSchedule(order.total, order.paymentType, order.createdAt);
+    }
+
+    const creditState = recalculateCreditState(order.total, order.paymentSchedule, order.paymentsHistory);
+    order.totalPaid = creditState.totalPaid;
+    order.creditStatus = creditState.creditStatus;
+    order.paymentSchedule = creditState.updatedSchedule;
     order.updatedAt = new Date().toISOString();
 
     try {
@@ -1036,7 +1037,14 @@ async function startServer() {
     if (!order.paymentsHistory) order.paymentsHistory = [];
     order.paymentsHistory = order.paymentsHistory.filter(a => a.id !== abonoId);
 
-    normalizeOrderWithDiscounts(order);
+    if (!order.paymentSchedule || order.paymentSchedule.length === 0) {
+      order.paymentSchedule = generatePaymentSchedule(order.total, order.paymentType, order.createdAt);
+    }
+
+    const creditState = recalculateCreditState(order.total, order.paymentSchedule, order.paymentsHistory);
+    order.totalPaid = creditState.totalPaid;
+    order.creditStatus = creditState.creditStatus;
+    order.paymentSchedule = creditState.updatedSchedule;
     order.updatedAt = new Date().toISOString();
 
     try {
