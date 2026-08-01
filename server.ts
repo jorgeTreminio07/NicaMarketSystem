@@ -413,6 +413,36 @@ async function loadDataFromSupabase() {
     const { data: ordData, error: ordErr } = await supabase.from('orders').select('*');
     if (!ordErr && ordData) {
       orders = ordData.map(mapOrderFromRow);
+
+      // Repair orders mutated by previous dynamic discount recalculation
+      for (const order of orders) {
+        if (order.id === 'da29251d-7c2c-486b-b91d-9b49a0403085' && order.total === 1210) {
+          order.items = order.items.map(it => {
+            if (it.productId === '38690cb5-415a-4774-b3c7-b0d10508e953') {
+              return { ...it, price: 800 };
+            }
+            return it;
+          });
+          order.total = 1010;
+          const pType = order.paymentType || 'contado';
+          order.paymentSchedule = generatePaymentSchedule(1010, pType, order.createdAt);
+          const creditState = recalculateCreditState(1010, order.paymentSchedule, order.paymentsHistory || []);
+          order.totalPaid = creditState.totalPaid;
+          order.creditStatus = creditState.creditStatus;
+          order.paymentSchedule = creditState.updatedSchedule;
+          try {
+            await supabase.from('orders').update({
+              items: order.items,
+              total: 1010,
+              payment_schedule: order.paymentSchedule,
+              total_paid: order.totalPaid,
+              credit_status: order.creditStatus
+            }).eq('id', order.id);
+          } catch (e) {
+            console.log('Error ajustando orden reparada en Supabase:', e);
+          }
+        }
+      }
     } else {
       orders = [];
     }
@@ -709,8 +739,8 @@ async function startServer() {
     let calculatedTotal = 0;
     const processedItems: OrderItem[] = items.map(item => {
       const prod = products.find(p => p.id === item.productId);
-      let itemPrice = Number(item.price) || 0;
-      if (prod) {
+      let itemPrice = typeof item.price === 'number' && item.price > 0 ? Number(item.price) : 0;
+      if (!itemPrice && prod) {
         if (prod.discountPercent && prod.discountPercent > 0) {
           itemPrice = prod.price * (1 - prod.discountPercent / 100);
         } else {
