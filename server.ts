@@ -4,6 +4,8 @@ import { createServer as createViteServer } from 'vite';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import crypto from 'crypto';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { INITIAL_PRODUCTS } from './src/data/initialProducts.js';
 
 interface Product {
@@ -521,7 +523,53 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  // Security: Disable powered-by header to prevent server technology fingerprinting
+  app.disable('x-powered-by');
+
+  // Security: Helmet HTTP Security Headers (Protects against XSS, Clickjacking, MIME sniffing, HSTS)
+  app.use(
+    helmet({
+      contentSecurityPolicy: false, // Vite handles CSP in dev mode
+      crossOriginEmbedderPolicy: false,
+      crossOriginOpenerPolicy: false,
+    })
+  );
+
+  // Security: Payload size limits to prevent RAM buffer overflow / DoS attacks
+  app.use(express.json({ limit: '2mb' }));
+  app.use(express.urlencoded({ limit: '2mb', extended: true }));
+
+  // Security Anti-DDoS Rate Limiter for general API endpoints
+  const apiRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 300, // máx 300 peticiones por ventana de 15 min por IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiadas solicitudes desde esta IP. Por favor intente más tarde (Protección Anti-DDoS).' }
+  });
+  app.use('/api', apiRateLimiter);
+
+  // Security Anti-Brute Force Limiter for Authentication & Sensitive Operations
+  const strictAuthLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 15, // máx 15 intentos por 15 min
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiados intentos de acceso o solicitudes administrativas. Intente en 15 minutos.' }
+  });
+  app.use('/api/auth/login', strictAuthLimiter);
+  app.use('/api/seed', strictAuthLimiter);
+  app.use('/api/clear-all', strictAuthLimiter);
+
+  // Security Anti-Spam Limiter for Order Creation
+  const orderLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 25,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Ha alcanzado el límite de creación de pedidos por periodo. Intente más tarde.' }
+  });
+  app.post('/api/orders', orderLimiter);
 
   // === API ROUTES ===
 
