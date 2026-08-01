@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Order, PaymentType } from '../../../types';
-import { CheckCircle2, XCircle, Clock, Send, Phone, User, Calendar, MessageSquare, Trash2, Search, X, Eye, ShoppingBag } from 'lucide-react';
+import { Order, Product, PaymentType } from '../../../types';
+import { CheckCircle2, XCircle, Clock, Send, Phone, User, Calendar, MessageSquare, Trash2, Search, X, Eye, ShoppingBag, AlertTriangle } from 'lucide-react';
 import { generateApprovalWhatsAppUrl, generateRejectionWhatsAppUrl, formatPaymentMethodText } from '../../../utils/whatsapp';
 
 interface OrdersSectionProps {
   orders: Order[];
+  products: Product[];
   onApproveOrder: (orderId: string, paymentType?: PaymentType) => Promise<void>;
   onRejectOrder: (orderId: string) => Promise<void>;
   onDeleteOrder: (orderId: string) => Promise<void>;
@@ -14,6 +15,7 @@ interface OrdersSectionProps {
 
 export const OrdersSection: React.FC<OrdersSectionProps> = ({
   orders,
+  products,
   onApproveOrder,
   onRejectOrder,
   onDeleteOrder,
@@ -65,6 +67,25 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
   });
 
   const visibleOrders = filteredOrders.slice(0, visibleCount);
+
+  // Helper function to check stock availability for pending orders
+  const getInsufficientStockInfo = (order: Order) => {
+    if (!order.items || order.items.length === 0) return { hasIssue: false, issues: [] };
+    const issues: Array<{ productName: string; requested: number; available: number }> = [];
+
+    for (const item of order.items) {
+      const prod = products.find(p => p.id === item.productId);
+      const available = prod ? prod.stock : 0;
+      if (item.quantity > available) {
+        issues.push({
+          productName: item.productName || prod?.name || 'Producto',
+          requested: item.quantity,
+          available
+        });
+      }
+    }
+    return { hasIssue: issues.length > 0, issues };
+  };
 
   // Automatic Infinite Scroll observer
   useEffect(() => {
@@ -271,6 +292,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
               const isApproved = order.status === 'Aprobado';
               const isRejected = order.status === 'Rechazado';
               const totalItems = order.items ? order.items.reduce((sum, i) => sum + i.quantity, 0) : 0;
+              const stockInfo = getInsufficientStockInfo(order);
 
               // Format date cleanly: e.g. "30/07/2026, 17:42"
               const formattedDate = new Date(order.createdAt).toLocaleDateString('es-NI', {
@@ -285,7 +307,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                 <div
                   key={order.id}
                   onClick={() => setSelectedOrderForModal(order)}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500/50 p-4 transition-all cursor-pointer flex flex-col justify-between group space-y-3"
+                  className={`bg-white rounded-2xl border ${isPending && stockInfo.hasIssue ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-200'} shadow-sm hover:shadow-md hover:border-emerald-500/50 p-4 transition-all cursor-pointer flex flex-col justify-between group space-y-3`}
                 >
                   {/* Header: N° Solicitud + FECHA DE SOLICITUD & Status Badge */}
                   <div className="flex items-center justify-between gap-2">
@@ -300,9 +322,14 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                     </div>
 
                     <div>
-                      {isPending && (
+                      {isPending && !stockInfo.hasIssue && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
                           <Clock className="w-3 h-3" /> Pendiente
+                        </span>
+                      )}
+                      {isPending && stockInfo.hasIssue && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
+                          <AlertTriangle className="w-3 h-3 text-rose-600" /> Stock Insuficiente
                         </span>
                       )}
                       {isApproved && (
@@ -329,6 +356,19 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                       <span>{order.customerPhone}</span>
                     </div>
                   </div>
+
+                  {/* Stock Warning Notice for Card View if Pending & Insufficient Stock */}
+                  {isPending && stockInfo.hasIssue && (
+                    <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 text-[11px] font-bold space-y-0.5">
+                      <div className="flex items-center gap-1 text-rose-700 font-extrabold">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        <span>Solo queda(n) {stockInfo.issues[0]?.available ?? 0} disponible(s)</span>
+                      </div>
+                      <p className="text-[10px] text-rose-800 font-medium">
+                        No se puede aprobar (se solicitaron {stockInfo.issues[0]?.requested} unidades). Solo disponible rechazar.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Info Pills & Price */}
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
@@ -376,174 +416,226 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
       )}
 
       {/* DETAIL AND ACTION MODAL FOR A SELECTED ORDER */}
-      {selectedOrderForModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-xs font-extrabold text-emerald-400 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
-                  N° {selectedOrderForModal.orderNumber || selectedOrderForModal.id.slice(0, 8)}
-                </span>
-                <span className="text-xs text-slate-300 font-medium flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>
-                    {new Date(selectedOrderForModal.createdAt).toLocaleString('es-NI', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })}
+      {selectedOrderForModal && (() => {
+        const modalStockInfo = getInsufficientStockInfo(selectedOrderForModal);
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
+              {/* Modal Header */}
+              <div className="bg-slate-900 text-white p-5 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-xs font-extrabold text-emerald-400 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
+                    N° {selectedOrderForModal.orderNumber || selectedOrderForModal.id.slice(0, 8)}
                   </span>
-                </span>
-              </div>
-              <button
-                onClick={() => setSelectedOrderForModal(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Content Scrollable */}
-            <div className="p-6 space-y-5 overflow-y-auto flex-1">
-              {/* Status Badge Banner */}
-              <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                <span className="text-xs font-bold text-slate-600">Estado Actual de la Solicitud:</span>
-                <div>
-                  {selectedOrderForModal.status === 'Pendiente' && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
-                      <Clock className="w-3.5 h-3.5" /> Pendiente
+                  <span className="text-xs text-slate-300 font-medium flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>
+                      {new Date(selectedOrderForModal.createdAt).toLocaleString('es-NI', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
                     </span>
-                  )}
-                  {selectedOrderForModal.status === 'Aprobado' && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Aprobado & Stock Restado
-                    </span>
-                  )}
-                  {selectedOrderForModal.status === 'Rechazado' && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
-                      <XCircle className="w-3.5 h-3.5 text-rose-600" /> Rechazado
-                    </span>
-                  )}
+                  </span>
                 </div>
+                <button
+                  onClick={() => setSelectedOrderForModal(null)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Customer Box & Payment Method selector */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Datos del Cliente:</h4>
-                  <div className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <User className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{selectedOrderForModal.customerName}</span>
-                  </div>
-                  <div className="text-xs text-slate-600 font-medium flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>{selectedOrderForModal.customerPhone}</span>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Modalidad de Pago:</h4>
-                  <select
-                    value={selectedPaymentTypes[selectedOrderForModal.id] || selectedOrderForModal.paymentType || 'contado'}
-                    onChange={e => handlePaymentTypeChange(selectedOrderForModal, e.target.value as PaymentType)}
-                    className="w-full text-xs font-bold bg-white border border-slate-300 rounded-xl p-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  >
-                    <option value="contado">De Contado (C$ {selectedOrderForModal.total.toFixed(2)})</option>
-                    <option value="cuotas_2">2 Cuotas Quincenales (2x C$ {(selectedOrderForModal.total / 2).toFixed(2)})</option>
-                    <option value="cuotas_4">4 Cuotas Semanales (4x C$ {(selectedOrderForModal.total / 4).toFixed(2)})</option>
-                  </select>
-                  <p className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 p-2 rounded-lg border border-emerald-200/60">
-                    {formatPaymentMethodText(selectedPaymentTypes[selectedOrderForModal.id] || selectedOrderForModal.paymentType || 'contado', selectedOrderForModal.total)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Order Items Table */}
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Detalle de Productos Solicitados:</h4>
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 divide-y divide-slate-200/80">
-                  {selectedOrderForModal.items.map((item, idx) => (
-                    <div key={idx} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-md">
-                          {item.quantity}x
-                        </span>
-                        <span className="font-semibold text-slate-900">{item.productName}</span>
-                      </div>
-                      <span className="font-extrabold text-slate-900">
-                        C$ {(item.price * item.quantity).toFixed(2)}
+              {/* Modal Content Scrollable */}
+              <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                {/* Status Badge Banner */}
+                <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  <span className="text-xs font-bold text-slate-600">Estado Actual de la Solicitud:</span>
+                  <div>
+                    {selectedOrderForModal.status === 'Pendiente' && !modalStockInfo.hasIssue && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
+                        <Clock className="w-3.5 h-3.5" /> Pendiente
                       </span>
-                    </div>
-                  ))}
+                    )}
+                    {selectedOrderForModal.status === 'Pendiente' && modalStockInfo.hasIssue && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Stock Insuficiente
+                      </span>
+                    )}
+                    {selectedOrderForModal.status === 'Aprobado' && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Aprobado & Stock Restado
+                      </span>
+                    )}
+                    {selectedOrderForModal.status === 'Rechazado' && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
+                        <XCircle className="w-3.5 h-3.5 text-rose-600" /> Rechazado
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-2 px-1 text-sm font-extrabold text-slate-900">
-                  <span>Total de la Solicitud:</span>
-                  <span className="text-emerald-600 text-xl font-black">C$ {selectedOrderForModal.total.toFixed(2)}</span>
+                {/* Insufficient Stock Warning Box */}
+                {selectedOrderForModal.status === 'Pendiente' && modalStockInfo.hasIssue && (
+                  <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl space-y-2 text-rose-900 animate-in fade-in">
+                    <div className="font-extrabold text-xs flex items-center gap-2 text-rose-700">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 animate-bounce" />
+                      <span>Stock insuficiente en inventario para aprobar esta solicitud</span>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      {modalStockInfo.issues.map((iss, i) => (
+                        <p key={i} className="font-semibold text-rose-800">
+                          • <strong>{iss.productName}</strong>: Solicitadas <strong>{iss.requested}</strong> unidad(es) | Stock disponible: <span className="bg-rose-200 text-rose-950 px-2 py-0.5 rounded font-black">{iss.available}</span>
+                        </p>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-rose-700 font-medium pt-1 border-t border-rose-200/60">
+                      Debido a que el stock actual es menor al solicitado, no se puede aprobar esta solicitud. Solo está disponible la opción de <strong>Rechazar</strong>.
+                    </p>
+                  </div>
+                )}
+
+                {/* Customer Box & Payment Method selector */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                    <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Datos del Cliente:</h4>
+                    <div className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                      <User className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{selectedOrderForModal.customerName}</span>
+                    </div>
+                    <div className="text-xs text-slate-600 font-medium flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>{selectedOrderForModal.customerPhone}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                    <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Modalidad de Pago:</h4>
+                    <select
+                      value={selectedPaymentTypes[selectedOrderForModal.id] || selectedOrderForModal.paymentType || 'contado'}
+                      onChange={e => handlePaymentTypeChange(selectedOrderForModal, e.target.value as PaymentType)}
+                      className="w-full text-xs font-bold bg-white border border-slate-300 rounded-xl p-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    >
+                      <option value="contado">De Contado (C$ {selectedOrderForModal.total.toFixed(2)})</option>
+                      <option value="cuotas_2">2 Cuotas Quincenales (2x C$ {(selectedOrderForModal.total / 2).toFixed(2)})</option>
+                      <option value="cuotas_4">4 Cuotas Semanales (4x C$ {(selectedOrderForModal.total / 4).toFixed(2)})</option>
+                    </select>
+                    <p className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 p-2 rounded-lg border border-emerald-200/60">
+                      {formatPaymentMethodText(selectedPaymentTypes[selectedOrderForModal.id] || selectedOrderForModal.paymentType || 'contado', selectedOrderForModal.total)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Order Items Table */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Detalle de Productos Solicitados:</h4>
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 divide-y divide-slate-200/80">
+                    {selectedOrderForModal.items.map((item, idx) => {
+                      const itemProd = products.find(p => p.id === item.productId);
+                      const currentStk = itemProd ? itemProd.stock : 0;
+                      const isLowStk = item.quantity > currentStk;
+
+                      return (
+                        <div key={idx} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2.5">
+                            <span className={`font-bold px-2.5 py-0.5 rounded-md ${isLowStk ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-emerald-100 text-emerald-700'}`}>
+                              {item.quantity}x
+                            </span>
+                            <div>
+                              <span className="font-semibold text-slate-900">{item.productName}</span>
+                              {isLowStk && (
+                                <span className="block text-[10px] text-rose-600 font-bold">
+                                  ⚠️ Quedan solo {currentStk} unidad(es) en inventario
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="font-extrabold text-slate-900">
+                            C$ {(item.price * item.quantity).toFixed(2)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 px-1 text-sm font-extrabold text-slate-900">
+                    <span>Total de la Solicitud:</span>
+                    <span className="text-emerald-600 text-xl font-black">C$ {selectedOrderForModal.total.toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Modal Footer Controls */}
-            <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
-              <button
-                onClick={() => setSelectedOrderForModal(null)}
-                className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold transition-all"
-              >
-                Cerrar
-              </button>
+              {/* Modal Footer Controls */}
+              <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                <button
+                  onClick={() => setSelectedOrderForModal(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold transition-all"
+                >
+                  Cerrar
+                </button>
 
-              <div className="flex items-center gap-2">
-                {selectedOrderForModal.status === 'Pendiente' ? (
-                  <>
-                    <button
-                      disabled={processingId === selectedOrderForModal.id}
-                      onClick={() => handleReject(selectedOrderForModal)}
-                      className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      <span>Rechazar</span>
-                    </button>
+                <div className="flex items-center gap-2">
+                  {selectedOrderForModal.status === 'Pendiente' ? (
+                    modalStockInfo.hasIssue ? (
+                      <button
+                        disabled={processingId === selectedOrderForModal.id}
+                        onClick={() => handleReject(selectedOrderForModal)}
+                        className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-600/20 flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        <span>Rechazar Solicitud (Solo quedan {modalStockInfo.issues[0]?.available ?? 0})</span>
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          disabled={processingId === selectedOrderForModal.id}
+                          onClick={() => handleReject(selectedOrderForModal)}
+                          className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          <span>Rechazar</span>
+                        </button>
 
-                    <button
-                      disabled={processingId === selectedOrderForModal.id}
-                      onClick={() => handleApprove(selectedOrderForModal)}
-                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Aprobar y Notificar</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => {
-                        const url = selectedOrderForModal.status === 'Aprobado' 
-                          ? generateApprovalWhatsAppUrl(selectedOrderForModal)
-                          : generateRejectionWhatsAppUrl(selectedOrderForModal);
-                        window.open(url, '_blank');
-                      }}
-                      className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-                    >
-                      <Send className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Re-enviar WhatsApp</span>
-                    </button>
+                        <button
+                          disabled={processingId === selectedOrderForModal.id}
+                          onClick={() => handleApprove(selectedOrderForModal)}
+                          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Aprobar y Notificar</span>
+                        </button>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          const url = selectedOrderForModal.status === 'Aprobado' 
+                            ? generateApprovalWhatsAppUrl(selectedOrderForModal)
+                            : generateRejectionWhatsAppUrl(selectedOrderForModal);
+                          window.open(url, '_blank');
+                        }}
+                        className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                      >
+                        <Send className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Re-enviar WhatsApp</span>
+                      </button>
 
-                    <button
-                      disabled={processingId === selectedOrderForModal.id}
-                      onClick={() => handleDelete(selectedOrderForModal)}
-                      className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50 active:scale-95 shadow-md shadow-rose-600/20"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Eliminar Solicitud</span>
-                    </button>
-                  </>
-                )}
+                      <button
+                        disabled={processingId === selectedOrderForModal.id}
+                        onClick={() => handleDelete(selectedOrderForModal)}
+                        className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50 active:scale-95 shadow-md shadow-rose-600/20"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Eliminar Solicitud</span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

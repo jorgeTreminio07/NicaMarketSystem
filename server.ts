@@ -753,8 +753,23 @@ async function startServer() {
     order.updatedAt = new Date().toISOString();
 
     // IF APPROVED, REST STOCK FOR THE INDICATED PRODUCTS & GENERATE PAYMENT SCHEDULE AUTOMATICALLY!
-    if (order.status === 'Aprobado') {
+    if (status === 'Aprobado') {
       if (previousStatus !== 'Aprobado') {
+        // Validation check FIRST: Verify stock sufficiency for all requested products
+        for (const item of order.items) {
+          const prod = products.find(p => p.id === item.productId);
+          const currentStock = prod ? prod.stock : 0;
+          if (!prod || currentStock < item.quantity) {
+            order.status = previousStatus; // Revert status change
+            const errRes = {
+              error: `No se puede aprobar la solicitud: Stock insuficiente para el producto "${item.productName || prod?.name || 'Producto'}". Se solicitaron ${item.quantity} unidad(es), pero solo quedan ${currentStock} disponible(s) en inventario.`
+            };
+            logApiCall('UPDATE_ORDER_STATUS', `/api/orders/${id}/status`, 'PUT', req.body, errRes, 400);
+            return res.status(400).json(errRes);
+          }
+        }
+
+        // Subtract stock atomically
         for (const item of order.items) {
           const prod = products.find(p => p.id === item.productId);
           if (prod) {
@@ -766,6 +781,13 @@ async function startServer() {
             }
           }
         }
+      }
+
+      if (status) {
+        order.status = status;
+      }
+      if (paymentType === 'contado' || paymentType === 'cuotas_2' || paymentType === 'cuotas_4') {
+        order.paymentType = paymentType;
       }
 
       // Automatically generate payment schedule if not existing or if paymentType changed
@@ -780,6 +802,13 @@ async function startServer() {
       order.totalPaid = creditState.totalPaid;
       order.creditStatus = creditState.creditStatus;
       order.paymentSchedule = creditState.updatedSchedule;
+    } else {
+      if (status) {
+        order.status = status;
+      }
+      if (paymentType === 'contado' || paymentType === 'cuotas_2' || paymentType === 'cuotas_4') {
+        order.paymentType = paymentType;
+      }
     }
 
     try {

@@ -278,6 +278,7 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
       {subTab === 'orders' && (
         <OrdersSection
           orders={orders}
+          products={products}
           onApproveOrder={onApproveOrder}
           onRejectOrder={onRejectOrder}
           onDeleteOrder={onDeleteOrder}

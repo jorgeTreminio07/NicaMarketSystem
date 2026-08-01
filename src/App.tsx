@@ -119,9 +119,9 @@ export default function App() {
     }
   }, [cartItems]);
 
-  // Load products and orders
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  // Load products and orders with support for silent background updates
+  const refreshData = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const [prods, ords, settings] = await Promise.all([
         getProductsUseCase.execute(),
@@ -132,16 +132,54 @@ export default function App() {
       setOrders(ords);
       if (settings) setStoreSettings(settings);
     } catch (err) {
-      console.error('Error cargando datos:', err);
-      addToast('error', 'Error de conexión', 'No se pudieron sincronizar los datos con el servidor.');
+      if (!silent) {
+        console.error('Error cargando datos:', err);
+        addToast('error', 'Error de conexión', 'No se pudieron sincronizar los datos con el servidor.');
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [addToast]);
+
+  const loadData = useCallback(() => refreshData(false), [refreshData]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Real-time polling (every 3 seconds) for live stock & order status synchronization
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshData(true);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [refreshData]);
+
+  // Real-time Cart Auto-Adjustment: Adjust customer cart quantities if stock changes on the server
+  useEffect(() => {
+    if (cartItems.length === 0 || products.length === 0) return;
+
+    setCartItems(prevCart => {
+      let changed = false;
+      const updatedCart = prevCart
+        .map(item => {
+          const prod = products.find(p => p.id === item.productId);
+          if (!prod) return item;
+          if (prod.stock <= 0) {
+            changed = true;
+            return null; // Out of stock, remove from cart
+          }
+          if (item.quantity > prod.stock) {
+            changed = true;
+            return { ...item, quantity: prod.stock }; // Reduce quantity to available stock
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[];
+
+      return changed ? updatedCart : prevCart;
+    });
+  }, [products]);
 
   // Handle Admin Access Unlock via encrypted Supabase user verification
   const handleAdminLogin = async (e: FormEvent) => {
