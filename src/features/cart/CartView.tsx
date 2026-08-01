@@ -220,72 +220,83 @@ export const CartView: React.FC<CartViewProps> = ({
                 const itemTotal = effectiveUnitPrice * item.quantity;
 
                 return (
-                  <div key={item.product.id} className="py-4 flex items-center gap-4">
-                    {/* Image */}
-                    <img
-                      src={itemImage}
-                      alt={item.product.name}
-                      className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
-                      }}
-                    />
-
-                    {/* Details */}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-sm text-slate-900 truncate">
-                        {item.product.name}
-                      </h4>
-                      <p className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5">
+                  <div 
+                    key={item.product.id} 
+                    className="py-3 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 p-3 sm:p-0 my-2 sm:my-0 bg-slate-50/70 sm:bg-transparent rounded-2xl sm:rounded-none border border-slate-200/80 sm:border-none"
+                  >
+                    {/* Top part on mobile: Image + Details side-by-side */}
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="relative shrink-0">
+                        <img
+                          src={itemImage}
+                          alt={item.product.name}
+                          className="w-16 h-16 rounded-xl object-cover border border-slate-200"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+                          }}
+                        />
                         {hasDiscount && (
-                          <span className="line-through text-slate-400 font-medium">
-                            C$ {item.product.price.toFixed(2)}
-                          </span>
-                        )}
-                        <span className={`font-bold ${hasDiscount ? 'text-rose-600' : 'text-slate-800'}`}>
-                          C$ {effectiveUnitPrice.toFixed(2)} c/u
-                        </span>
-                        {hasDiscount && (
-                          <span className="bg-rose-100 text-rose-800 font-extrabold text-[10px] px-1.5 py-0.5 rounded">
+                          <span className="sm:hidden absolute -top-1.5 -right-1.5 bg-rose-600 text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded-full shadow-sm">
                             -{item.product.discountPercent}%
                           </span>
                         )}
-                        <span>•</span>
-                        <span className="text-emerald-600">{item.product.category}</span>
-                      </p>
-                      <div className="text-xs font-extrabold text-slate-900 mt-1">
-                        Subtotal: C$ {itemTotal.toFixed(2)}
+                      </div>
+
+                      {/* Details */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm text-slate-900 leading-snug break-words">
+                          {item.product.name}
+                        </h4>
+                        <p className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5 mt-1">
+                          {hasDiscount && (
+                            <span className="line-through text-slate-400 font-medium">
+                              C$ {item.product.price.toFixed(2)}
+                            </span>
+                          )}
+                          <span className={`font-bold ${hasDiscount ? 'text-rose-600' : 'text-slate-800'}`}>
+                            C$ {effectiveUnitPrice.toFixed(2)} c/u
+                          </span>
+                          <span className="text-emerald-600 font-medium">• {item.product.category}</span>
+                        </p>
+                        <div className="text-xs font-extrabold text-slate-900 mt-1">
+                          Subtotal: <span className="text-emerald-700 font-bold">C$ {itemTotal.toFixed(2)}</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Quantity Selector */}
-                    <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200 shrink-0">
+                    {/* Quantity Controls & Remove Action */}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t border-slate-200/60 sm:border-none">
+                      <div className="flex items-center bg-white sm:bg-slate-100 rounded-xl p-1 border border-slate-200 shrink-0">
+                        <button
+                          onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
+                          className="w-7 h-7 rounded-lg bg-slate-100 sm:bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-all"
+                          aria-label="Disminuir cantidad"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-8 text-center text-xs font-bold text-slate-900">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
+                          disabled={item.quantity >= item.product.stock}
+                          className="w-7 h-7 rounded-lg bg-slate-100 sm:bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 disabled:opacity-40 transition-all"
+                          aria-label="Aumentar cantidad"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Delete button */}
                       <button
-                        onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
-                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-all"
+                        onClick={() => onRemoveItem(item.product.id)}
+                        className="text-rose-600 sm:text-slate-400 hover:text-rose-600 p-2 rounded-xl sm:rounded-lg hover:bg-rose-50 bg-rose-50/50 sm:bg-transparent transition-all flex items-center gap-1 shrink-0 text-xs font-medium"
+                        title="Eliminar producto"
                       >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-8 text-center text-xs font-bold text-slate-900">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                        disabled={item.quantity >= item.product.stock}
-                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 disabled:opacity-40 transition-all"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
+                        <span className="sm:hidden font-semibold">Quitar</span>
                       </button>
                     </div>
-
-                    {/* Delete button */}
-                    <button
-                      onClick={() => onRemoveItem(item.product.id)}
-                      className="text-slate-400 hover:text-rose-600 p-2 rounded-lg hover:bg-rose-50 transition-all shrink-0"
-                      title="Eliminar producto"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
                 );
               })}
