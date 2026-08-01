@@ -70,6 +70,26 @@ export function generateApprovalWhatsAppUrl(order: Order): string {
 
   text += `\n*Total Final:* C$ ${order.total.toFixed(2)}\n`;
   text += `*Modalidad de Pago Aprobada:* ${formatPaymentMethodText(paymentType, order.total)}\n`;
+
+  if (paymentType === 'cuotas_2' || paymentType === 'cuotas_4') {
+    text += `\n*Fechas de Pago Programadas:*\n`;
+    const numCuotas = paymentType === 'cuotas_2' ? 2 : 4;
+    const quotaAmount = order.total / numCuotas;
+    const intervalDays = paymentType === 'cuotas_2' ? 15 : 7;
+    const baseDate = new Date(order.createdAt || Date.now());
+
+    for (let i = 1; i <= numCuotas; i++) {
+      const dueDate = new Date(baseDate.getTime() + i * intervalDays * 24 * 60 * 60 * 1000);
+      const formattedDate = dueDate.toLocaleDateString('es-NI', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      const periodLabel = paymentType === 'cuotas_2' ? `Cuota ${i} (15 días)` : `Cuota ${i} (Semana ${i})`;
+      text += `• ${periodLabel}: ${formattedDate} — C$ ${quotaAmount.toFixed(2)}\n`;
+    }
+  }
+
   text += `\nEstamos coordinando la entrega de sus productos. ¡Gracias por preferirnos!`;
 
   return `https://wa.me/${customerPhoneClean}?text=${encodeURIComponent(text)}`;

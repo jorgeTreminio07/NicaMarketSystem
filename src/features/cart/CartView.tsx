@@ -116,7 +116,7 @@ export const CartView: React.FC<CartViewProps> = ({
             </p>
             <p className="font-bold flex items-center gap-1.5">
               <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>2. Mensaje de WhatsApp listo para enviar al (505) 89098184</span>
+              <span>2. Mensaje de WhatsApp listo para enviar al +{storeWhatsappNumber || '50589098184'}</span>
             </p>
           </div>
 
@@ -425,7 +425,7 @@ export const CartView: React.FC<CartViewProps> = ({
 
               {/* Notice */}
               <p className="text-[11px] text-slate-400 leading-normal">
-                Al hacer clic en <strong className="text-slate-600">Comprar</strong>, tu pedido se guardará en la lista de solicitudes del Backoffice y se abrirá un chat de WhatsApp con el número <strong className="text-slate-600">505 89098184</strong>.
+                Al hacer clic en <strong className="text-slate-600">Comprar</strong>, tu pedido se guardará en la lista de solicitudes del Backoffice y se abrirá un chat de WhatsApp con el número <strong className="text-slate-600">+{storeWhatsappNumber || '50589098184'}</strong>.
               </p>
 
               {/* Submit Buy Button */}

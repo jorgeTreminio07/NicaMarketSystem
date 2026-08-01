@@ -414,7 +414,7 @@ async function loadDataFromSupabase() {
       const row = setArr[0];
       storeSettings = {
         id: row.id || 'default',
-        name: row.name && row.name !== 'Nuestra Tienda' ? row.name : 'NicaMarket',
+        name: row.name || 'NicaMarket',
         description: row.description || '',
         logoUrl: row.logo_url || row.logoUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
         whatsappNumber: row.whatsapp_number || row.whatsappNumber || '50589098184',
@@ -422,14 +422,18 @@ async function loadDataFromSupabase() {
       };
     } else {
       // Upsert default settings to Supabase
-      await supabase.from('store_settings').upsert([{
-        id: 'default',
-        name: storeSettings.name,
-        description: storeSettings.description,
-        logo_url: storeSettings.logoUrl,
-        whatsapp_number: storeSettings.whatsappNumber,
-        updated_at: storeSettings.updatedAt
-      }]);
+      try {
+        await supabase.from('store_settings').upsert([{
+          id: 'default',
+          name: storeSettings.name,
+          description: storeSettings.description,
+          logo_url: storeSettings.logoUrl,
+          whatsapp_number: storeSettings.whatsappNumber,
+          updated_at: storeSettings.updatedAt
+        }]);
+      } catch (e) {
+        console.log('Aviso al guardar configuración inicial en Supabase:', e);
+      }
     }
 
     // Load Users
@@ -1029,27 +1033,55 @@ async function startServer() {
 
   app.put('/api/store-settings', async (req, res) => {
     const { name, description, logoUrl, whatsappNumber } = req.body;
-    storeSettings = {
-      ...storeSettings,
-      name: name !== undefined ? String(name).trim() : storeSettings.name,
-      description: description !== undefined ? String(description).trim() : storeSettings.description,
-      logoUrl: logoUrl !== undefined ? String(logoUrl).trim() : storeSettings.logoUrl,
-      whatsappNumber: whatsappNumber !== undefined ? String(whatsappNumber).trim() : storeSettings.whatsappNumber,
-      updatedAt: new Date().toISOString()
-    };
+    const targetName = name !== undefined ? String(name).trim() : storeSettings.name;
+    const targetDescription = description !== undefined ? String(description).trim() : storeSettings.description;
+    const targetLogoUrl = logoUrl !== undefined ? String(logoUrl).trim() : storeSettings.logoUrl;
+    const targetWhatsappNumber = whatsappNumber !== undefined ? String(whatsappNumber).trim() : storeSettings.whatsappNumber;
+    const updatedAt = new Date().toISOString();
 
     try {
-      await supabase.from('store_settings').upsert([{
+      const { error: upsertErr } = await supabase.from('store_settings').upsert([{
         id: 'default',
-        name: storeSettings.name,
-        description: storeSettings.description,
-        logo_url: storeSettings.logoUrl,
-        whatsapp_number: storeSettings.whatsappNumber,
-        updated_at: storeSettings.updatedAt
+        name: targetName,
+        description: targetDescription,
+        logo_url: targetLogoUrl,
+        whatsapp_number: targetWhatsappNumber,
+        updated_at: updatedAt
       }]);
-    } catch (err) {
-      console.log('Error actualizando store_settings en Supabase:', err);
+
+      if (upsertErr) {
+        console.error('Error haciendo upsert en store_settings:', upsertErr);
+        // Fallback update
+        const { error: updateErr } = await supabase.from('store_settings').update({
+          name: targetName,
+          description: targetDescription,
+          logo_url: targetLogoUrl,
+          whatsapp_number: targetWhatsappNumber,
+          updated_at: updatedAt
+        }).eq('id', 'default');
+
+        if (updateErr) {
+          console.error('Error haciendo update en store_settings:', updateErr);
+          return res.status(400).json({
+            error: `Error en la base de datos (Supabase): ${upsertErr.message || updateErr.message}. Deshabilita RLS en la tabla 'store_settings' o agrega una política de acceso (Policy).`
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('Excepción al actualizar store_settings en Supabase:', err);
+      return res.status(500).json({
+        error: `Excepción al guardar en base de datos: ${err?.message || 'Error de conexión'}`
+      });
     }
+
+    storeSettings = {
+      id: 'default',
+      name: targetName,
+      description: targetDescription,
+      logoUrl: targetLogoUrl,
+      whatsappNumber: targetWhatsappNumber,
+      updatedAt
+    };
 
     logApiCall('UPDATE_STORE_SETTINGS', '/api/store-settings', 'PUT', req.body, storeSettings, 200);
     res.json(storeSettings);
