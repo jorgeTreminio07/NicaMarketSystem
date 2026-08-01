@@ -540,9 +540,8 @@ async function loadDataFromSupabase() {
   }
 }
 
-async function startServer() {
+export function buildExpressApp(): express.Express {
   const app = express();
-  const PORT = 3000;
 
   // Security: Disable powered-by header to prevent server technology fingerprinting
   app.disable('x-powered-by');
@@ -1712,6 +1711,13 @@ async function startServer() {
     }
   });
 
+  return app;
+}
+
+async function startServer() {
+  const app = buildExpressApp();
+  const PORT = 3000;
+
   // === VITE MIDDLEWARE SETUP ===
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -1734,5 +1740,7 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
 

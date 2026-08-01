@@ -1,0 +1,14 @@
+{
+  "framework": null,
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/server.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/server" }
+  ]
+}
