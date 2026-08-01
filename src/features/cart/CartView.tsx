@@ -34,7 +34,14 @@ export const CartView: React.FC<CartViewProps> = ({
     orderNumber?: string;
   } | null>(null);
 
-  const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const getItemEffectivePrice = (prod: import('../../types').Product) => {
+    if (prod.discountPercent && prod.discountPercent > 0) {
+      return prod.price * (1 - prod.discountPercent / 100);
+    }
+    return prod.price;
+  };
+
+  const subtotal = items.reduce((sum, item) => sum + getItemEffectivePrice(item.product) * item.quantity, 0);
   const total = subtotal;
 
   const validateForm = () => {
@@ -208,7 +215,9 @@ export const CartView: React.FC<CartViewProps> = ({
             <div className="divide-y divide-slate-100">
               {items.map(item => {
                 const itemImage = item.product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
-                const itemTotal = item.product.price * item.quantity;
+                const effectiveUnitPrice = getItemEffectivePrice(item.product);
+                const hasDiscount = Boolean(item.product.discountPercent && item.product.discountPercent > 0);
+                const itemTotal = effectiveUnitPrice * item.quantity;
 
                 return (
                   <div key={item.product.id} className="py-4 flex items-center gap-4">
@@ -227,8 +236,22 @@ export const CartView: React.FC<CartViewProps> = ({
                       <h4 className="font-bold text-sm text-slate-900 truncate">
                         {item.product.name}
                       </h4>
-                      <p className="text-xs text-slate-400">
-                        C$ {item.product.price.toFixed(2)} c/u • <span className="text-emerald-600">{item.product.category}</span>
+                      <p className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5">
+                        {hasDiscount && (
+                          <span className="line-through text-slate-400 font-medium">
+                            C$ {item.product.price.toFixed(2)}
+                          </span>
+                        )}
+                        <span className={`font-bold ${hasDiscount ? 'text-rose-600' : 'text-slate-800'}`}>
+                          C$ {effectiveUnitPrice.toFixed(2)} c/u
+                        </span>
+                        {hasDiscount && (
+                          <span className="bg-rose-100 text-rose-800 font-extrabold text-[10px] px-1.5 py-0.5 rounded">
+                            -{item.product.discountPercent}%
+                          </span>
+                        )}
+                        <span>•</span>
+                        <span className="text-emerald-600">{item.product.category}</span>
                       </p>
                       <div className="text-xs font-extrabold text-slate-900 mt-1">
                         Subtotal: C$ {itemTotal.toFixed(2)}

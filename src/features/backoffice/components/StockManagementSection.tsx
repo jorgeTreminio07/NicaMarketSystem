@@ -159,8 +159,24 @@ export const StockManagementSection: React.FC<StockManagementSectionProps> = ({
                         </td>
 
                         {/* Price */}
-                        <td className="py-3 px-4 font-extrabold text-slate-900">
-                          C$ {product.price.toFixed(2)}
+                        <td className="py-3 px-4">
+                          {product.discountPercent && product.discountPercent > 0 ? (
+                            <div>
+                              <span className="text-[10px] line-through text-slate-400 font-bold block">
+                                C$ {product.price.toFixed(2)}
+                              </span>
+                              <span className="font-extrabold text-rose-600 block">
+                                C$ {(product.price * (1 - product.discountPercent / 100)).toFixed(2)}
+                              </span>
+                              <span className="text-[9px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-extrabold inline-block mt-0.5">
+                                -{product.discountPercent}%
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="font-extrabold text-slate-900">
+                              C$ {product.price.toFixed(2)}
+                            </span>
+                          )}
                         </td>
 
                         {/* Stock Adjuster */}

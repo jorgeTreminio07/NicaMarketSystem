@@ -16,6 +16,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState<number | string>('');
+  const [discountPercent, setDiscountPercent] = useState<number | string>(0);
   const [stock, setStock] = useState<number | string>('');
   const [description, setDescription] = useState('');
   const [images, setImages] = useState<string[]>([]);
@@ -27,6 +28,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       setName(product.name);
       setCategory(product.category);
       setPrice(product.price);
+      setDiscountPercent(product.discountPercent || 0);
       setStock(product.stock);
       setDescription(product.description);
       setImages(product.images && product.images.length > 0 ? [...product.images] : []);
@@ -56,6 +58,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
         name: name.trim(),
         category: category.trim() || 'General',
         price: Number(price) || 0,
+        discountPercent: Math.min(100, Math.max(0, Number(discountPercent) || 0)),
         stock: Math.max(0, Number(stock) || 0),
         description: description.trim(),
         images: images.length > 0 ? images : product.images,
@@ -118,10 +121,10 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                Precio (C$ Córdobas) *
+                Precio (C$) *
               </label>
               <input
                 type="number"
@@ -131,6 +134,21 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                 onChange={e => setPrice(e.target.value)}
                 required
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-rose-600 mb-1">
+                % Descuento (0-100)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={discountPercent}
+                onChange={e => setDiscountPercent(e.target.value)}
+                placeholder="0"
+                className="w-full px-3.5 py-2.5 bg-rose-50/50 border border-rose-200 rounded-xl text-sm font-bold text-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
               />
             </div>
 

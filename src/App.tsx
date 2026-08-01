@@ -268,13 +268,19 @@ export default function App() {
   // Checkout Handler
   const handleCheckout = async (customerName: string, customerPhone: string, items: CartItem[], paymentType: PaymentType = 'contado') => {
     try {
-      const orderItems = items.map(i => ({
-        productId: i.product.id,
-        productName: i.product.name,
-        price: i.product.price,
-        quantity: i.quantity,
-        image: i.product.images?.[0]
-      }));
+      const orderItems = items.map(i => {
+        const effectivePrice = (i.product.discountPercent && i.product.discountPercent > 0)
+          ? i.product.price * (1 - i.product.discountPercent / 100)
+          : i.product.price;
+
+        return {
+          productId: i.product.id,
+          productName: i.product.name,
+          price: effectivePrice,
+          quantity: i.quantity,
+          image: i.product.images?.[0]
+        };
+      });
 
       const createdOrder = await createOrderUseCase.execute(customerName, customerPhone, orderItems, paymentType);
 

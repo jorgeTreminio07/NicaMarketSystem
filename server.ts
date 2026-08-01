@@ -11,6 +11,7 @@ interface Product {
   name: string;
   description: string;
   price: number;
+  discountPercent?: number;
   category: string;
   stock: number;
   images: string[];
@@ -150,6 +151,7 @@ function mapProductFromRow(row: any): Product {
     name: String(row.name || ''),
     description: String(row.description || ''),
     price: Number(row.price) || 0,
+    discountPercent: Number(row.discount_percent || row.discountPercent) || 0,
     category: String(row.category || 'General'),
     stock: Number(row.stock) || 0,
     images: Array.isArray(row.images) ? row.images : (row.images ? [row.images] : []),
@@ -164,6 +166,7 @@ function mapProductToRow(p: Product) {
     name: p.name,
     description: p.description,
     price: p.price,
+    discount_percent: p.discountPercent || 0,
     category: p.category,
     stock: p.stock,
     images: p.images,
@@ -539,7 +542,7 @@ async function startServer() {
 
   // Create new product
   app.post('/api/products', async (req, res) => {
-    const { name, description, price, category, stock, images } = req.body;
+    const { name, description, price, discountPercent, category, stock, images } = req.body;
     
     if (!name || !price) {
       const errRes = { error: 'Nombre y precio son obligatorios.' };
@@ -552,6 +555,7 @@ async function startServer() {
       name: String(name).trim(),
       description: String(description || '').trim(),
       price: Number(price) || 0,
+      discountPercent: Math.min(100, Math.max(0, Number(discountPercent) || 0)),
       category: String(category || 'General').trim(),
       stock: Math.max(0, Number(stock) || 0),
       images: Array.isArray(images) && images.length > 0 
@@ -584,13 +588,14 @@ async function startServer() {
       return res.status(404).json(errRes);
     }
 
-    const { name, description, price, category, stock, images } = req.body;
+    const { name, description, price, discountPercent, category, stock, images } = req.body;
 
     products[index] = {
       ...products[index],
       name: name !== undefined ? String(name).trim() : products[index].name,
       description: description !== undefined ? String(description).trim() : products[index].description,
       price: price !== undefined ? Number(price) : products[index].price,
+      discountPercent: discountPercent !== undefined ? Math.min(100, Math.max(0, Number(discountPercent) || 0)) : products[index].discountPercent,
       category: category !== undefined ? String(category).trim() : products[index].category,
       stock: stock !== undefined ? Math.max(0, Number(stock)) : products[index].stock,
       images: Array.isArray(images) && images.length > 0 ? images : products[index].images,

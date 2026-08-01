@@ -15,6 +15,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
   const [category, setCategory] = useState('');
   const [customCategory, setCustomCategory] = useState('');
   const [price, setPrice] = useState<number | string>('');
+  const [discountPercent, setDiscountPercent] = useState<number | string>(0);
   const [stock, setStock] = useState<number | string>(10);
   const [description, setDescription] = useState('');
   const [imageUrls, setImageUrls] = useState<string[]>([
@@ -56,6 +57,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
         name: name.trim(),
         category: finalCategory,
         price: Math.max(0, Number(price) || 0),
+        discountPercent: Math.min(100, Math.max(0, Number(discountPercent) || 0)),
         stock: Math.max(0, Number(stock) || 0),
         description: description.trim(),
         images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80'],
@@ -68,6 +70,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
       setCategory('');
       setCustomCategory('');
       setPrice('');
+      setDiscountPercent(0);
       setStock(10);
       setDescription('');
       setImageUrls(['https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80']);
@@ -156,12 +159,12 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
             )}
           </div>
 
-          {/* Price & Stock */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Price, Discount & Stock */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-600 mb-1 flex items-center gap-1.5">
                 <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Precio (C$ Córdobas) *</span>
+                <span>Precio Regular (C$) *</span>
               </label>
               <input
                 type="number"
@@ -172,6 +175,22 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
                 placeholder="0.00"
                 required
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-rose-600 mb-1 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-rose-600" />
+                <span>% Descuento (0-100)</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={discountPercent}
+                onChange={e => setDiscountPercent(e.target.value)}
+                placeholder="0"
+                className="w-full px-4 py-2.5 bg-rose-50/50 border border-rose-200 rounded-xl text-sm font-bold text-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
               />
             </div>
 

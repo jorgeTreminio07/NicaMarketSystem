@@ -20,6 +20,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   if (!product) return null;
 
   const isOutOfStock = product.stock <= 0;
+  const hasDiscount = Boolean(product.discountPercent && product.discountPercent > 0);
+  const discountedPrice = hasDiscount 
+    ? product.price * (1 - (product.discountPercent! / 100))
+    : product.price;
 
   const handleAdd = () => {
     if (isOutOfStock) return;
@@ -53,10 +57,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <div className="flex flex-col justify-between">
             <div>
               {/* Category */}
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
                   {product.category}
                 </span>
+                {hasDiscount && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-extrabold uppercase bg-rose-600 text-white shadow-sm">
+                    -{product.discountPercent}% DESCUENTO
+                  </span>
+                )}
                 {isOutOfStock ? (
                   <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5" /> Agotado
@@ -75,8 +84,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               {/* Price */}
               <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-slate-900">
-                  C$ {product.price.toFixed(2)}
+                {hasDiscount && (
+                  <span className="text-lg text-slate-400 font-bold line-through">
+                    C$ {product.price.toFixed(2)}
+                  </span>
+                )}
+                <span className={`text-3xl font-black ${hasDiscount ? 'text-rose-600' : 'text-slate-900'}`}>
+                  C$ {discountedPrice.toFixed(2)}
                 </span>
                 <span className="text-xs text-slate-400 font-medium">Córdobas</span>
               </div>

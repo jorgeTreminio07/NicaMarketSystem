@@ -17,6 +17,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const isOutOfStock = product.stock <= 0;
   const primaryImage = product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+  const hasDiscount = Boolean(product.discountPercent && product.discountPercent > 0);
+  const discountedPrice = hasDiscount 
+    ? product.price * (1 - (product.discountPercent! / 100))
+    : product.price;
 
   return (
     <div
@@ -34,10 +38,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           }}
         />
 
-        {/* Category Pill */}
-        <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase bg-slate-900/80 backdrop-blur-sm text-white shadow-sm">
-          {product.category}
-        </span>
+        {/* Category & Discount Pills */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1 items-start">
+          <span className="px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase bg-slate-900/80 backdrop-blur-sm text-white shadow-sm">
+            {product.category}
+          </span>
+          {hasDiscount && (
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase bg-rose-600 text-white shadow-sm animate-pulse">
+              -{product.discountPercent}% OFF
+            </span>
+          )}
+        </div>
 
         {/* Stock Badge */}
         {isOutOfStock ? (
@@ -75,9 +86,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Price */}
           <div>
             <span className="text-xs text-slate-400 block font-medium">Precio</span>
-            <span className="text-lg font-extrabold text-slate-900">
-              C$ {product.price.toFixed(2)}
-            </span>
+            <div className="flex items-baseline gap-1.5">
+              {hasDiscount && (
+                <span className="text-xs text-slate-400 line-through font-bold">
+                  C$ {product.price.toFixed(2)}
+                </span>
+              )}
+              <span className={`text-lg font-extrabold ${hasDiscount ? 'text-rose-600' : 'text-slate-900'}`}>
+                C$ {discountedPrice.toFixed(2)}
+              </span>
+            </div>
           </div>
 
           {/* Add to Cart Button */}
