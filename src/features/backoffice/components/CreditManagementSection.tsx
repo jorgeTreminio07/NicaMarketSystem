@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Order } from '../../../types';
+import { Order, Product } from '../../../types';
 import { orderRepository } from '../../../infrastructure/api/apiClient';
 import {
   CreditCard,
@@ -20,17 +20,44 @@ import {
   Eye,
   TrendingUp,
   FileText,
-  Loader2
+  Loader2,
+  Tag
 } from 'lucide-react';
 
 interface CreditManagementSectionProps {
   orders: Order[];
+  products?: Product[];
   onRefresh: () => void;
   isLoading: boolean;
 }
 
+function getItemEffectivePrice(item: any, productsList: Product[] = []): { unitPrice: number; originalPrice?: number; discountPercent?: number } {
+  const prod = productsList.find(p => String(p.id) === String(item.productId));
+  const discountPercent = prod?.discountPercent || 0;
+  if (prod && discountPercent > 0) {
+    const discounted = prod.price * (1 - discountPercent / 100);
+    return {
+      unitPrice: discounted,
+      originalPrice: prod.price,
+      discountPercent
+    };
+  }
+  return { unitPrice: Number(item.price) || 0 };
+}
+
+function calculateEffectiveOrderTotal(order: Order, productsList: Product[] = []): number {
+  if (!order.items || order.items.length === 0) return order.total;
+  let computed = 0;
+  for (const item of order.items) {
+    const { unitPrice } = getItemEffectivePrice(item, productsList);
+    computed += unitPrice * (item.quantity || 1);
+  }
+  return computed > 0 ? Math.round(computed * 100) / 100 : order.total;
+}
+
 export const CreditManagementSection: React.FC<CreditManagementSectionProps> = ({
   orders,
+  products = [],
   onRefresh,
   isLoading,
 }) => {
@@ -78,7 +105,10 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
   const paidCount = approvedOrders.filter(o => o.creditStatus === 'Pagado').length;
   const overdueCount = approvedOrders.filter(o => o.creditStatus === 'En Mora').length;
 
-  const totalPortfolioValue = approvedOrders.reduce((sum, o) => sum + o.total, 0);
+  const totalPortfolioValue = approvedOrders.reduce(
+    (sum, o) => sum + calculateEffectiveOrderTotal(o, products),
+    0
+  );
   const totalCollected = approvedOrders.reduce((sum, o) => sum + (o.totalPaid || 0), 0);
   const totalPending = Math.max(0, totalPortfolioValue - totalCollected);
 
@@ -405,11 +435,12 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {visibleOrders.map(order => {
+              const effectiveTotal = calculateEffectiveOrderTotal(order, products);
               const totalPaid = order.totalPaid || 0;
-              const remainingBalance = Math.max(0, order.total - totalPaid);
+              const remainingBalance = Math.max(0, effectiveTotal - totalPaid);
               const isPagado = order.creditStatus === 'Pagado' || remainingBalance <= 0;
               const isEnMora = order.creditStatus === 'En Mora';
-              const progressPercent = Math.min(100, Math.round((totalPaid / (order.total || 1)) * 100));
+              const progressPercent = Math.min(100, Math.round((totalPaid / (effectiveTotal || 1)) * 100));
 
               // Format date cleanly
               const formattedDate = new Date(order.createdAt).toLocaleDateString('es-NI', {
@@ -493,7 +524,7 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
                     <div className="grid grid-cols-3 gap-1.5 pt-1 text-[11px] text-center">
                       <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
                         <span className="text-[9px] font-extrabold uppercase text-slate-400 block">Total</span>
-                        <span className="font-extrabold text-slate-900">C$ {order.total.toFixed(0)}</span>
+                        <span className="font-extrabold text-slate-900">C$ {effectiveTotal.toFixed(0)}</span>
                       </div>
                       <div className="bg-emerald-50 p-1.5 rounded-lg border border-emerald-200">
                         <span className="text-[9px] font-extrabold uppercase text-emerald-800 block">Abonado</span>
@@ -534,11 +565,12 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
       {/* DETAIL MODAL FOR A SELECTED CREDIT ORDER */}
       {selectedCreditForModal && (() => {
         const order = selectedCreditForModal;
+        const effectiveTotal = calculateEffectiveOrderTotal(order, products);
         const totalPaid = order.totalPaid || 0;
-        const remainingBalance = Math.max(0, order.total - totalPaid);
+        const remainingBalance = Math.max(0, effectiveTotal - totalPaid);
         const isPagado = order.creditStatus === 'Pagado' || remainingBalance <= 0;
         const isEnMora = order.creditStatus === 'En Mora';
-        const progressPercent = Math.min(100, Math.round((totalPaid / (order.total || 1)) * 100));
+        const progressPercent = Math.min(100, Math.round((totalPaid / (effectiveTotal || 1)) * 100));
 
         return (
           <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
@@ -595,7 +627,7 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                     <div className="bg-white p-3 rounded-xl border border-slate-200 text-center">
                       <span className="text-[10px] font-black uppercase text-slate-400 block">Total de la Deuda</span>
-                      <span className="text-base font-black text-slate-900">C$ {order.total.toFixed(2)}</span>
+                      <span className="text-base font-black text-slate-900">C$ {effectiveTotal.toFixed(2)}</span>
                     </div>
                     <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-center">
                       <span className="text-[10px] font-black uppercase text-emerald-800 block">Total Abonado</span>
@@ -625,6 +657,63 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
                     </div>
                   </div>
                 </div>
+
+                {/* Requested Products with Discounts */}
+                {order.items && order.items.length > 0 && (
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                    <h4 className="text-[11px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Productos Solicitados ({order.items.length}):</span>
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {order.items.map((item, idx) => {
+                        const { unitPrice, originalPrice, discountPercent } = getItemEffectivePrice(item, products);
+                        const qty = item.quantity || 1;
+                        const itemTotal = unitPrice * qty;
+
+                        return (
+                          <div
+                            key={idx}
+                            className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs gap-3"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt={item.productName}
+                                  className="w-8 h-8 rounded-lg object-cover shrink-0 border border-slate-200"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                                  <Tag className="w-4 h-4 text-slate-400" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <span className="font-bold text-slate-900 block truncate">
+                                  {item.productName}
+                                </span>
+                                <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                                  <span>{qty}x C$ {unitPrice.toFixed(2)}</span>
+                                  {discountPercent ? (
+                                    <>
+                                      <span className="line-through text-slate-400">C$ {originalPrice?.toFixed(2)}</span>
+                                      <span className="bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.2 rounded text-[9px]">
+                                        -{discountPercent}% OFF
+                                      </span>
+                                    </>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="font-black text-slate-900 shrink-0">
+                              C$ {itemTotal.toFixed(2)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Schedule & Payment History */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -804,7 +893,7 @@ export const CreditManagementSection: React.FC<CreditManagementSectionProps> = (
                 <div className="flex justify-between font-extrabold pt-1 border-t border-slate-200 text-slate-900">
                   <span>Saldo Pendiente:</span>
                   <span className="text-emerald-600">
-                    C$ {(selectedOrderForAbono.total - (selectedOrderForAbono.totalPaid || 0)).toFixed(2)}
+                    C$ {(calculateEffectiveOrderTotal(selectedOrderForAbono, products) - (selectedOrderForAbono.totalPaid || 0)).toFixed(2)}
                   </span>
                 </div>
               </div>

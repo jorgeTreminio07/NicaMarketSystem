@@ -290,6 +290,7 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
       {subTab === 'credits' && (
         <CreditManagementSection
           orders={orders}
+          products={products}
           onRefresh={onRefresh}
           isLoading={isLoading}
         />
