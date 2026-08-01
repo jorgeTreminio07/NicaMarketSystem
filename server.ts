@@ -709,7 +709,14 @@ async function startServer() {
     let calculatedTotal = 0;
     const processedItems: OrderItem[] = items.map(item => {
       const prod = products.find(p => p.id === item.productId);
-      const itemPrice = prod ? prod.price : (Number(item.price) || 0);
+      let itemPrice = Number(item.price) || 0;
+      if (prod) {
+        if (prod.discountPercent && prod.discountPercent > 0) {
+          itemPrice = prod.price * (1 - prod.discountPercent / 100);
+        } else {
+          itemPrice = prod.price;
+        }
+      }
       const qty = Math.max(1, Number(item.quantity) || 1);
       calculatedTotal += itemPrice * qty;
 
@@ -718,7 +725,7 @@ async function startServer() {
         productName: prod ? prod.name : String(item.productName || 'Producto'),
         price: itemPrice,
         quantity: qty,
-        image: prod ? prod.images[0] : item.image
+        image: prod ? (prod.images?.[0] || item.image) : item.image
       };
     });
 

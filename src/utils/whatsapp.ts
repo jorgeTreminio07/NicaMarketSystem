@@ -43,8 +43,16 @@ export function generateOrderWhatsAppUrl(
   text += `*Detalle del Pedido:*\n`;
 
   items.forEach(item => {
-    const itemTotal = item.product.price * item.quantity;
-    text += `• ${item.quantity}x ${item.product.name} - C$ ${item.product.price.toFixed(2)} (C$ ${itemTotal.toFixed(2)})\n`;
+    const hasDiscount = Boolean(item.product.discountPercent && item.product.discountPercent > 0);
+    const unitPrice = hasDiscount
+      ? item.product.price * (1 - item.product.discountPercent! / 100)
+      : item.product.price;
+    const itemTotal = unitPrice * item.quantity;
+    if (hasDiscount) {
+      text += `• ${item.quantity}x ${item.product.name} - C$ ${unitPrice.toFixed(2)} c/u (-${item.product.discountPercent}% OFF) (Subtotal: C$ ${itemTotal.toFixed(2)})\n`;
+    } else {
+      text += `• ${item.quantity}x ${item.product.name} - C$ ${item.product.price.toFixed(2)} (C$ ${itemTotal.toFixed(2)})\n`;
+    }
   });
 
   text += `\n*Total a pagar:* C$ ${total.toFixed(2)}\n`;
