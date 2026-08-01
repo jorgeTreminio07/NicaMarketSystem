@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StoreSettings } from '../../../types';
 import { getStoreSettings, updateStoreSettings } from '../../../infrastructure/api/apiClient';
-import { Store, Image as ImageIcon, Phone, FileText, Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Store, Image as ImageIcon, Phone, FileText, Save, Loader2, CheckCircle2, AlertCircle, Copy, Database } from 'lucide-react';
 
 interface StoreSettingsSectionProps {
   onSettingsUpdated?: (settings: StoreSettings) => void;
@@ -17,6 +17,39 @@ export const StoreSettingsSection: React.FC<StoreSettingsSectionProps> = ({ onSe
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [copiedSql, setCopiedSql] = useState(false);
+
+  const sqlScript = `-- Ejecutar esto en el SQL Editor de Supabase:
+-- Mantiene RLS activado y otorga permisos completos de lectura/escritura (SELECT, INSERT, UPDATE, DELETE):
+
+-- 1. Activar RLS en las tablas
+ALTER TABLE store_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- 2. Crear políticas (Policies) para permitir todas las operaciones:
+DROP POLICY IF EXISTS "Permitir todo en store_settings" ON store_settings;
+CREATE POLICY "Permitir todo en store_settings" ON store_settings FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir todo en api_logs" ON api_logs;
+CREATE POLICY "Permitir todo en api_logs" ON api_logs FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir todo en products" ON products;
+CREATE POLICY "Permitir todo en products" ON products FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir todo en orders" ON orders;
+CREATE POLICY "Permitir todo en orders" ON orders FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir todo en users" ON users;
+CREATE POLICY "Permitir todo en users" ON users FOR ALL USING (true) WITH CHECK (true);`;
+
+  const handleCopySql = () => {
+    navigator.clipboard.writeText(sqlScript);
+    setCopiedSql(true);
+    setTimeout(() => setCopiedSql(false), 2500);
+  };
 
   useEffect(() => {
     loadSettings();
@@ -204,6 +237,39 @@ export const StoreSettingsSection: React.FC<StoreSettingsSectionProps> = ({ onSe
           </button>
         </div>
       </form>
+
+      {/* Supabase RLS Fix Script Card */}
+      <div className="p-5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3 text-amber-900">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold text-xs">
+            <Database className="w-4 h-4 text-amber-600" />
+            <span>Solución de Permisos en Supabase (Script SQL)</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleCopySql}
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+          >
+            {copiedSql ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>¡Copiado!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copiar Script SQL</span>
+              </>
+            )}
+          </button>
+        </div>
+        <p className="text-[11px] text-amber-800 leading-relaxed">
+          Si Supabase te muestra la advertencia <i>"This table can be accessed via the Data API but no RLS policies exist"</i> o no permite editar registros, ejecuta este script en el <strong>SQL Editor</strong> de tu proyecto Supabase:
+        </p>
+        <pre className="p-3 bg-amber-100/80 rounded-xl text-[11px] font-mono text-amber-950 overflow-x-auto border border-amber-200">
+          {sqlScript}
+        </pre>
+      </div>
     </div>
   );
 };
