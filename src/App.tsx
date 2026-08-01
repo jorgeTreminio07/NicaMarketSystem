@@ -147,12 +147,26 @@ export default function App() {
     loadData();
   }, [loadData]);
 
-  // Real-time polling (every 3 seconds) for live stock & order status synchronization
+  // Smart polling (every 15s) when tab is active for live stock & order status synchronization
   useEffect(() => {
     const interval = setInterval(() => {
-      refreshData(true);
-    }, 3000);
-    return () => clearInterval(interval);
+      if (document.visibilityState === 'visible') {
+        refreshData(true);
+      }
+    }, 15000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshData(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refreshData]);
 
   // Real-time Cart Auto-Adjustment: Adjust customer cart quantities if stock changes on the server
