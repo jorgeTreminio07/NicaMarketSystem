@@ -238,8 +238,8 @@ function mapOrderToRow(o: Order) {
   };
 }
 
-// In-memory initial data store as cache/fallback
-let products: Product[] = [...INITIAL_PRODUCTS];
+// In-memory data is only used as a cache of the real Supabase state (never fake data)
+let products: Product[] = [];
 
 const INITIAL_ORDERS: Order[] = [
   {
@@ -326,7 +326,7 @@ const INITIAL_ORDERS: Order[] = [
   }
 ];
 
-let orders: Order[] = [...INITIAL_ORDERS];
+let orders: Order[] = [];
 
 // Optimization: Cache Timestamps & Variables to eliminate excessive Supabase API requests
 let lastProductsFetchTime = 0;
@@ -421,7 +421,7 @@ async function clearSupabase() {
   touchCacheTimestamps();
 }
 
-async function loadDataFromSupabase() {
+export async function loadDataFromSupabase() {
   console.log('Cargando datos persistentes guardados en Supabase...');
   try {
     const { data: prodData, error: prodErr } = await supabase.from('products').select('*');
@@ -634,24 +634,15 @@ export function buildExpressApp(): express.Express {
     }
   });
 
-  // Get products (Optimized with in-memory TTL cache to save Supabase API bandwidth)
+  // Get products (Always reflects current Supabase data; memory is only a cache of the last sync)
   app.get('/api/products', async (req, res) => {
-    const now = Date.now();
-    const isCacheValid = products.length > 0 && (now - lastProductsFetchTime < CACHE_TTL_MS);
-
-    if (!isCacheValid) {
-      try {
-        const { data, error } = await supabase.from('products').select('*');
-        if (!error && data && data.length > 0) {
-          products = data.map(row => {
-            const existing = products.find(p => p.id === String(row.id));
-            return mapProductFromRow(row, existing);
-          });
-          lastProductsFetchTime = now;
-        }
-      } catch (e) {
-        console.log('Utilizando caché local para productos:', e);
-      }
+    try {
+      const { data, error } = await supabase.from('products').select('*');
+      if (error) throw error;
+      products = (data || []).map(row => mapProductFromRow(row));
+      lastProductsFetchTime = Date.now();
+    } catch (e) {
+      console.log('Error cargando productos desde Supabase, usando último estado conocido:', e);
     }
     const activeProducts = products.filter(p => !p.isDeleted);
     const sorted = [...activeProducts].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
@@ -792,21 +783,15 @@ export function buildExpressApp(): express.Express {
     res.json(successRes);
   });
 
-  // Get orders (Optimized with in-memory TTL cache to save Supabase API queries)
+  // Get orders (Always reflects current Supabase data; memory is only a cache of the last sync)
   app.get('/api/orders', async (req, res) => {
-    const now = Date.now();
-    const isCacheValid = orders.length > 0 && (now - lastOrdersFetchTime < CACHE_TTL_MS);
-
-    if (!isCacheValid) {
-      try {
-        const { data, error } = await supabase.from('orders').select('*');
-        if (!error && data && data.length > 0) {
-          orders = data.map(mapOrderFromRow);
-          lastOrdersFetchTime = now;
-        }
-      } catch (e) {
-        console.log('Utilizando caché local para órdenes:', e);
-      }
+    try {
+      const { data, error } = await supabase.from('orders').select('*');
+      if (error) throw error;
+      orders = (data || []).map(mapOrderFromRow);
+      lastOrdersFetchTime = Date.now();
+    } catch (e) {
+      console.log('Error cargando órdenes desde Supabase, usando último estado conocido:', e);
     }
     const activeOrders = orders.filter(o => !o.isDeleted);
     const sorted = [...activeOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -1460,34 +1445,18 @@ export function buildExpressApp(): express.Express {
   });
 
   app.get('/api/users', async (req, res) => {
-    const now = Date.now();
-    const isCacheValid = users.length > 0 && (now - lastUsersFetchTime < LONG_CACHE_TTL_MS);
-
-    if (!isCacheValid) {
-      try {
-        const { data: dbUsers, error: dbErr } = await supabase.from('users').select('*');
-        if (!dbErr && dbUsers) {
-          const fetchedUsers = dbUsers.map((u: any) => ({
-            id: String(u.id),
-            email: String(u.email),
-            password_hash: String(u.password_hash || u.passwordHash || u.password || ''),
-            role: String(u.role || 'staff'),
-            created_at: String(u.created_at || u.createdAt || new Date().toISOString())
-          }));
-
-          for (const fu of fetchedUsers) {
-            const idx = users.findIndex(u => u.id === fu.id || u.email.toLowerCase() === fu.email.toLowerCase());
-            if (idx >= 0) {
-              users[idx] = fu;
-            } else {
-              users.push(fu);
-            }
-          }
-          lastUsersFetchTime = now;
-        }
-      } catch (e) {
-        console.log('Aviso al consultar usuarios de la base de datos:', e);
-      }
+    try {
+      const { data: dbUsers, error: dbErr } = await supabase.from('users').select('*');
+      if (dbErr) throw dbErr;
+      users = (dbUsers || []).map((u: any) => ({
+        id: String(u.id),
+        email: String(u.email),
+        password_hash: String(u.password_hash || u.passwordHash || u.password || ''),
+        role: String(u.role || 'staff'),
+        created_at: String(u.created_at || u.createdAt || new Date().toISOString())
+      }));
+    } catch (e) {
+      console.log('Aviso al consultar usuarios de la base de datos, usando último estado conocido:', e);
     }
 
     // Always ensure admin exists
