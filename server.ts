@@ -145,13 +145,19 @@ async function logApiCall(
 }
 
 // Helper Mappers for Supabase (Handling snake_case SQL columns)
-function mapProductFromRow(row: any): Product {
+function mapProductFromRow(row: any, existing?: Product): Product {
+  const rawDiscount = row.discount_percent ?? row.discountPercent;
+  let discountPercent = existing?.discountPercent || 0;
+  if (rawDiscount !== undefined && rawDiscount !== null) {
+    discountPercent = Number(rawDiscount) || 0;
+  }
+
   return {
     id: String(row.id),
     name: String(row.name || ''),
     description: String(row.description || ''),
     price: Number(row.price) || 0,
-    discountPercent: Number(row.discount_percent || row.discountPercent) || 0,
+    discountPercent,
     category: String(row.category || 'General'),
     stock: Number(row.stock) || 0,
     images: Array.isArray(row.images) ? row.images : (row.images ? [row.images] : []),
@@ -399,7 +405,7 @@ async function loadDataFromSupabase() {
   try {
     const { data: prodData, error: prodErr } = await supabase.from('products').select('*');
     if (!prodErr && prodData) {
-      products = prodData.map(mapProductFromRow);
+      products = prodData.map(row => mapProductFromRow(row));
     } else {
       products = [];
     }
@@ -530,7 +536,10 @@ async function startServer() {
     try {
       const { data, error } = await supabase.from('products').select('*');
       if (!error && data && data.length > 0) {
-        products = data.map(mapProductFromRow);
+        products = data.map(row => {
+          const existing = products.find(p => p.id === String(row.id));
+          return mapProductFromRow(row, existing);
+        });
       }
     } catch (e) {
       console.log('Utilizando caché local para productos:', e);
@@ -568,7 +577,12 @@ async function startServer() {
 
     // Sync to Supabase in background
     try {
-      await supabase.from('products').insert([mapProductToRow(newProduct)]);
+      const rowData = mapProductToRow(newProduct);
+      const { error } = await supabase.from('products').insert([rowData]);
+      if (error && error.message && error.message.includes('discount_percent')) {
+        const { discount_percent, ...fallbackRow } = rowData;
+        await supabase.from('products').insert([fallbackRow]);
+      }
     } catch (err) {
       console.log('Error guardando en Supabase, conservado en memoria local:', err);
     }
@@ -602,7 +616,12 @@ async function startServer() {
     };
 
     try {
-      await supabase.from('products').upsert(mapProductToRow(products[index]));
+      const rowData = mapProductToRow(products[index]);
+      const { error } = await supabase.from('products').upsert(rowData);
+      if (error && error.message && error.message.includes('discount_percent')) {
+        const { discount_percent, ...fallbackRow } = rowData;
+        await supabase.from('products').upsert(fallbackRow);
+      }
     } catch (err) {
       console.log('Error actualizando Supabase:', err);
     }
