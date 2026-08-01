@@ -1,3 +1,3 @@
-import { buildExpressApp } from '../server';
+import { buildExpressApp } from '../server.js';
 
 export default buildExpressApp();

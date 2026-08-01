@@ -182,7 +182,7 @@ function mapProductToRow(p: Product) {
   };
 }
 
-import { generatePaymentSchedule, recalculateCreditState, getInstallmentCount } from './src/utils/paymentUtils';
+import { generatePaymentSchedule, recalculateCreditState, getInstallmentCount } from './src/utils/paymentUtils.js';
 
 function mapOrderFromRow(row: any): Order {
   const pType = row.payment_type || row.paymentType || 'contado';
