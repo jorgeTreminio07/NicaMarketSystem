@@ -82,20 +82,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </p>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+        <div className="mt-4 pt-3 border-t border-slate-100 flex items-end justify-between gap-2">
           {/* Price */}
           <div>
             <span className="text-xs text-slate-400 block font-medium">Precio</span>
-            <div className="flex items-baseline gap-1.5">
-              {hasDiscount && (
-                <span className="text-xs text-slate-400 line-through font-bold">
+            {hasDiscount ? (
+              <div className="flex flex-col">
+                <span className="text-xs text-slate-400 line-through font-bold leading-none mb-0.5">
                   C$ {product.price.toFixed(2)}
                 </span>
-              )}
-              <span className={`text-lg font-extrabold ${hasDiscount ? 'text-rose-600' : 'text-slate-900'}`}>
-                C$ {discountedPrice.toFixed(2)}
+                <span className="text-lg font-extrabold text-rose-600 leading-tight">
+                  C$ {discountedPrice.toFixed(2)}
+                </span>
+              </div>
+            ) : (
+              <span className="text-lg font-extrabold text-slate-900 block leading-tight">
+                C$ {product.price.toFixed(2)}
               </span>
-            </div>
+            )}
           </div>
 
           {/* Add to Cart Button */}
