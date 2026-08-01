@@ -98,18 +98,18 @@ export const StoreView: React.FC<StoreViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-4 sm:space-y-8">
       {/* Banner / Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white p-6 sm:p-10 shadow-xl border border-slate-800">
-        <div className="relative z-10 max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white p-4 sm:p-10 shadow-xl border border-slate-800">
+        <div className="relative z-10 max-w-2xl space-y-2 sm:space-y-3">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] sm:text-xs font-semibold border border-emerald-500/30">
+            <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
             <span>Catálogo Completo y Actualizado</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+          <h1 className="text-xl sm:text-4xl font-extrabold tracking-tight leading-tight">
             ¡Te damos la bienvenida a nuestro catálogo!
           </h1>
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+          <p className="text-xs sm:text-base text-slate-300 leading-normal sm:leading-relaxed">
             {storeSettings?.description || 'Explora nuestra tienda en línea. Todos los productos están organizados alfabéticamente. Filtra por categoría, busca lo que deseas e ingresa tu pedido directo por WhatsApp.'}
           </p>
         </div>
@@ -119,18 +119,18 @@ export const StoreView: React.FC<StoreViewProps> = ({
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+      <div className="bg-white p-3 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex-1">
             <SearchBar value={searchQuery} onChange={setSearchQuery} />
           </div>
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all border border-slate-200 shrink-0"
+            className="flex items-center justify-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all border border-slate-200 shrink-0"
             title="Actualizar catálogo"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
             <span>Refrescar</span>
           </button>
         </div>
@@ -162,21 +162,21 @@ export const StoreView: React.FC<StoreViewProps> = ({
 
       {/* Loading Skeleton or Products Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
           {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-            <div key={i} className="bg-white rounded-2xl p-4 border border-slate-200 space-y-4 animate-pulse">
+            <div key={i} className="bg-white rounded-2xl p-2.5 sm:p-4 border border-slate-200 space-y-3 animate-pulse">
               <div className="aspect-square w-full bg-slate-200 rounded-xl" />
-              <div className="h-5 bg-slate-200 rounded-md w-3/4" />
-              <div className="h-4 bg-slate-100 rounded-md w-full" />
-              <div className="flex justify-between items-center pt-2">
-                <div className="h-6 bg-slate-200 rounded-md w-1/3" />
-                <div className="h-9 bg-slate-200 rounded-xl w-1/2" />
+              <div className="h-4 sm:h-5 bg-slate-200 rounded-md w-3/4" />
+              <div className="h-3 sm:h-4 bg-slate-100 rounded-md w-full" />
+              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 pt-2">
+                <div className="h-5 sm:h-6 bg-slate-200 rounded-md w-1/3" />
+                <div className="h-7 sm:h-9 bg-slate-200 rounded-xl w-full sm:w-1/2" />
               </div>
             </div>
           ))}
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-lg mx-auto my-8">
+        <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border border-slate-200 shadow-sm max-w-lg mx-auto my-8">
           <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-4">
             <Package className="w-8 h-8" />
           </div>
@@ -196,7 +196,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
         </div>
       ) : (
         <div className="space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {visibleProducts.map(product => (
               <ProductCard
                 key={product.id}

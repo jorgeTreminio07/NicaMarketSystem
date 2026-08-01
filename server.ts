@@ -1225,7 +1225,7 @@ async function startServer() {
     const productUrls = (products || []).map(p => `
   <url>
     <loc>${baseUrl}/#product-${p.id}</loc>
-    <lastmod>${p.updatedAt ? new Date(p.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}</lastmod>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`).join('');
