@@ -1,12 +1,15 @@
-import React from 'react';
-import { ShieldCheck, X, Lock, CheckCircle2, FileText } from 'lucide-react';
+import React from "react";
+import { ShieldCheck, X, Lock, CheckCircle2, FileText } from "lucide-react";
 
 interface PrivacyPolicyModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose }) => {
+export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   if (!isOpen) return null;
 
   return (
@@ -22,7 +25,9 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 Política de Privacidad
               </h2>
-              <p className="text-xs text-slate-400">Nica Market — Protección y transparencia de tus datos</p>
+              <p className="text-xs text-slate-400">
+                NicaMarket — Protección y transparencia de tus datos
+              </p>
             </div>
           </div>
 
@@ -40,7 +45,9 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
           <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-3 text-emerald-300 text-xs">
             <Lock className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
             <p>
-              En <strong>Nica Market</strong> valoramos y respetamos profundamente tu privacidad. Nos comprometemos a mantener una total transparencia respecto al manejo de tu información.
+              En <strong>NicaMarket</strong> valoramos y respetamos
+              profundamente tu privacidad. Nos comprometemos a mantener una
+              total transparencia respecto al manejo de tu información.
             </p>
           </div>
 
@@ -51,12 +58,22 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
                 1. Recopilación Mínima de Datos
               </h3>
               <p className="text-slate-400 text-xs pl-6">
-                Únicamente recopilamos la información estrictamente necesaria para poder procesar y coordinar la entrega de tus pedidos:
+                Únicamente recopilamos la información estrictamente necesaria
+                para poder procesar y coordinar la entrega de tus pedidos:
               </p>
               <ul className="list-disc list-inside text-xs text-slate-300 pl-8 space-y-1 mt-1">
-                <li><strong>Nombre completo</strong> para identificar tu solicitud.</li>
-                <li><strong>Número de teléfono</strong> para ponernos en contacto contigo vía WhatsApp.</li>
-                <li><strong>Detalle de los productos solicitados</strong> y monto total del pedido.</li>
+                <li>
+                  <strong>Nombre completo</strong> para identificar tu
+                  solicitud.
+                </li>
+                <li>
+                  <strong>Número de teléfono</strong> para ponernos en contacto
+                  contigo vía WhatsApp.
+                </li>
+                <li>
+                  <strong>Detalle de los productos solicitados</strong> y monto
+                  total del pedido.
+                </li>
               </ul>
             </div>
 
@@ -66,7 +83,13 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
                 2. No Compartimos tu Información
               </h3>
               <p className="text-slate-400 text-xs pl-6">
-                <strong>No vendemos, no alquilamos ni compartimos tus datos personales con terceros ni ninguna empresa externa bajo ninguna circunstancia.</strong> Tus datos permanecen 100% confidenciales dentro de nuestra plataforma.
+                <strong>
+                  No vendemos, no alquilamos ni compartimos tus datos personales
+                  con terceros ni ninguna empresa externa bajo ninguna
+                  circunstancia.
+                </strong>{" "}
+                Tus datos permanecen 100% confidenciales dentro de nuestra
+                plataforma.
               </p>
             </div>
 
@@ -76,7 +99,10 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
                 3. Uso Exclusivo del Canal WhatsApp
               </h3>
               <p className="text-slate-400 text-xs pl-6">
-                El número de teléfono proporcionado se utiliza únicamente para coordinar la confirmación, facturación y estado de envío de la solicitud realizada. No realizamos spam ni comunicaciones no deseadas.
+                El número de teléfono proporcionado se utiliza únicamente para
+                coordinar la confirmación, facturación y estado de envío de la
+                solicitud realizada. No realizamos spam ni comunicaciones no
+                deseadas.
               </p>
             </div>
 
@@ -86,9 +112,26 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
                 4. Seguridad y Retención
               </h3>
               <p className="text-slate-400 text-xs pl-6">
-                Tus solicitudes se almacenan de manera segura en nuestros servidores únicamente para fines de gestión de inventario y respaldo de facturación de compras. Puedes solicitar la eliminación de tu información en cualquier momento a través de nuestro canal oficial de soporte.
+                Tus solicitudes se almacenan de manera segura en nuestros
+                servidores únicamente para fines de gestión de inventario y
+                respaldo de facturación de compras. Puedes solicitar la
+                eliminación de tu información en cualquier momento a través de
+                nuestro canal oficial de soporte.
               </p>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <h3 className="font-semibold text-white text-base flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              5. Pagos Coordinados via WhatsApp
+            </h3>
+            <p className="text-slate-400 text-xs pl-6">
+              No pedimos numeros de tarjetas ni datos bancarios en nuestra
+              plataforma. Todos los pagos se coordinan directamente a través de
+              WhatsApp, garantizando que tu información financiera permanezca
+              segura y fuera de nuestra aplicación.
+            </p>
           </div>
         </div>
 

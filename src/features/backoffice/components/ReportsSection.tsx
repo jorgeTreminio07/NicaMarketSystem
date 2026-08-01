@@ -158,10 +158,10 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ orders, products
     orders.forEach(o => {
       if (o.status === 'Aprobado') {
         o.items.forEach(item => {
-          const key = item.productId || item.title;
+          const key = item.productId || item.productName;
           if (!productSalesMap[key]) {
             productSalesMap[key] = {
-              title: item.title,
+              title: item.productName,
               totalQuantity: 0,
               totalRevenue: 0
             };

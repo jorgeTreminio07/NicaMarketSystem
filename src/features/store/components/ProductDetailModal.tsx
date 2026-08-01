@@ -1,7 +1,17 @@
-import React, { useState } from 'react';
-import { X, ShoppingCart, Check, ShieldCheck, Truck, Package, AlertTriangle, Plus, Minus } from 'lucide-react';
-import { Product } from '../../../types';
-import { ImageCarousel } from './ImageCarousel';
+import React, { useState } from "react";
+import {
+  X,
+  ShoppingCart,
+  Check,
+  ShieldCheck,
+  Truck,
+  Package,
+  AlertTriangle,
+  Plus,
+  Minus,
+} from "lucide-react";
+import { Product } from "../../../types";
+import { ImageCarousel } from "./ImageCarousel";
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -20,9 +30,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   if (!product) return null;
 
   const isOutOfStock = product.stock <= 0;
-  const hasDiscount = Boolean(product.discountPercent && product.discountPercent > 0);
-  const discountedPrice = hasDiscount 
-    ? product.price * (1 - (product.discountPercent! / 100))
+  const hasDiscount = Boolean(
+    product.discountPercent && product.discountPercent > 0,
+  );
+  const discountedPrice = hasDiscount
+    ? product.price * (1 - product.discountPercent! / 100)
     : product.price;
 
   const handleAdd = () => {
@@ -34,9 +46,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div 
+      <div
         className="bg-white rounded-2xl sm:rounded-3xl max-w-3xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-200 relative my-auto animate-scale-up"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
@@ -68,11 +80,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 )}
                 {isOutOfStock ? (
                   <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-rose-100 text-rose-700 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Agotado
+                    <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />{" "}
+                    Agotado
                   </span>
                 ) : (
                   <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-slate-100 text-slate-700 flex items-center gap-1">
-                    <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600" /> {product.stock} disponibles
+                    <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600" />{" "}
+                    {product.stock} disponibles
                   </span>
                 )}
               </div>
@@ -89,10 +103,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     C$ {product.price.toFixed(2)}
                   </span>
                 )}
-                <span className={`text-2xl sm:text-3xl font-black ${hasDiscount ? 'text-rose-600' : 'text-slate-900'}`}>
+                <span
+                  className={`text-2xl sm:text-3xl font-black ${hasDiscount ? "text-rose-600" : "text-slate-900"}`}
+                >
                   C$ {discountedPrice.toFixed(2)}
                 </span>
-                <span className="text-xs text-slate-400 font-medium">Córdobas</span>
+                {/* <span className="text-xs text-slate-400 font-medium">Córdobas</span> */}
               </div>
 
               {/* Description */}
@@ -122,10 +138,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-100 space-y-3 sm:space-y-4">
               {!isOutOfStock && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase text-slate-500">Cantidad:</span>
+                  <span className="text-xs font-bold uppercase text-slate-500">
+                    Cantidad:
+                  </span>
                   <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
                     <button
-                      onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                       disabled={quantity <= 1}
                       className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white shadow-xs hover:bg-slate-200 flex items-center justify-center text-slate-700 disabled:opacity-40 transition-all"
                     >
@@ -135,7 +153,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       {quantity}
                     </span>
                     <button
-                      onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
+                      onClick={() =>
+                        setQuantity((q) => Math.min(product.stock, q + 1))
+                      }
                       disabled={quantity >= product.stock}
                       className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white shadow-xs hover:bg-slate-200 flex items-center justify-center text-slate-700 disabled:opacity-40 transition-all"
                     >
@@ -150,10 +170,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 onClick={handleAdd}
                 className={`w-full py-3 sm:py-3.5 px-4 sm:px-6 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg active:scale-98 ${
                   isOutOfStock
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                    ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
                     : addedSuccess
-                    ? 'bg-emerald-600 text-white ring-4 ring-emerald-500/20'
-                    : 'bg-slate-900 hover:bg-emerald-600 text-white shadow-slate-900/10'
+                      ? "bg-emerald-600 text-white ring-4 ring-emerald-500/20"
+                      : "bg-slate-900 hover:bg-emerald-600 text-white shadow-slate-900/10"
                 }`}
               >
                 {addedSuccess ? (

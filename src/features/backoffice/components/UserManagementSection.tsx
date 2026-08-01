@@ -1,7 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { BackofficeUser } from '../../../types';
-import { getUsers, createUser, updateUser, deleteUser } from '../../../infrastructure/api/apiClient';
-import { Users, UserPlus, Trash2, ShieldCheck, Mail, Lock, KeyRound, Loader2, CheckCircle2, AlertCircle, Pencil, X, Save } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { BackofficeUser } from "../../../types";
+import {
+  getUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+} from "../../../infrastructure/api/apiClient";
+import {
+  Users,
+  UserPlus,
+  Trash2,
+  ShieldCheck,
+  Mail,
+  Lock,
+  KeyRound,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Pencil,
+  X,
+  Save,
+} from "lucide-react";
 
 export const UserManagementSection: React.FC = () => {
   const [users, setUsers] = useState<BackofficeUser[]>([]);
@@ -9,16 +28,19 @@ export const UserManagementSection: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
 
   // Form State for Create
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'staff'>('staff');
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"admin" | "staff">("staff");
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   // Form State for Edit Modal
   const [editingUser, setEditingUser] = useState<BackofficeUser | null>(null);
-  const [editEmail, setEditEmail] = useState('');
-  const [editPassword, setEditPassword] = useState('');
-  const [editRole, setEditRole] = useState<'admin' | 'staff'>('staff');
+  const [editEmail, setEditEmail] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editRole, setEditRole] = useState<"admin" | "staff">("staff");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   useEffect(() => {
@@ -31,7 +53,7 @@ export const UserManagementSection: React.FC = () => {
       const list = await getUsers();
       setUsers(list);
     } catch (err) {
-      console.error('Error cargando usuarios:', err);
+      console.error("Error cargando usuarios:", err);
     } finally {
       setIsLoading(false);
     }
@@ -40,12 +62,18 @@ export const UserManagementSection: React.FC = () => {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      setMessage({ type: 'error', text: 'El usuario/correo y la contraseña son requeridos.' });
+      setMessage({
+        type: "error",
+        text: "El usuario/correo y la contraseña son requeridos.",
+      });
       return;
     }
 
     if (password.trim().length < 4) {
-      setMessage({ type: 'error', text: 'La contraseña debe tener al menos 4 caracteres.' });
+      setMessage({
+        type: "error",
+        text: "La contraseña debe tener al menos 4 caracteres.",
+      });
       return;
     }
 
@@ -55,16 +83,22 @@ export const UserManagementSection: React.FC = () => {
       const newU = await createUser({
         email: email.trim(),
         password: password.trim(),
-        role
+        role,
       });
-      setUsers(prev => [...prev, newU]);
-      setEmail('');
-      setPassword('');
-      setRole('staff');
-      setMessage({ type: 'success', text: `Usuario ${newU.email} creado exitosamente en la base de datos.` });
+      setUsers((prev) => [...prev, newU]);
+      setEmail("");
+      setPassword("");
+      setRole("staff");
+      setMessage({
+        type: "success",
+        text: `Usuario ${newU.email} creado exitosamente en la base de datos.`,
+      });
       setTimeout(() => setMessage(null), 4000);
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Error al crear usuario' });
+      setMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : "Error al crear usuario",
+      });
     } finally {
       setIsCreating(false);
     }
@@ -73,15 +107,15 @@ export const UserManagementSection: React.FC = () => {
   const handleOpenEdit = (user: BackofficeUser) => {
     setEditingUser(user);
     setEditEmail(user.email);
-    setEditPassword('');
-    setEditRole(user.role === 'admin' ? 'admin' : 'staff');
+    setEditPassword("");
+    setEditRole(user.role === "admin" ? "admin" : "staff");
   };
 
   const handleCloseEdit = () => {
     setEditingUser(null);
-    setEditEmail('');
-    setEditPassword('');
-    setEditRole('staff');
+    setEditEmail("");
+    setEditPassword("");
+    setEditRole("staff");
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -89,7 +123,10 @@ export const UserManagementSection: React.FC = () => {
     if (!editingUser) return;
 
     if (!editEmail.trim()) {
-      setMessage({ type: 'error', text: 'El nombre de usuario/correo es obligatorio.' });
+      setMessage({
+        type: "error",
+        text: "El nombre de usuario/correo es obligatorio.",
+      });
       return;
     }
 
@@ -98,35 +135,48 @@ export const UserManagementSection: React.FC = () => {
       const updated = await updateUser(editingUser.id, {
         email: editEmail.trim(),
         password: editPassword.trim() || undefined,
-        role: editRole
+        role: editRole,
       });
 
-      setUsers(prev => prev.map(u => u.id === editingUser.id ? updated : u));
-      setMessage({ type: 'success', text: `Usuario ${updated.email} actualizado exitosamente.` });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === editingUser.id ? updated : u)),
+      );
+      setMessage({
+        type: "success",
+        text: `Usuario ${updated.email} actualizado exitosamente.`,
+      });
       handleCloseEdit();
       setTimeout(() => setMessage(null), 4000);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al actualizar usuario');
+      alert(err instanceof Error ? err.message : "Error al actualizar usuario");
     } finally {
       setIsSavingEdit(false);
     }
   };
 
   const handleDeleteUser = async (userId: string, userEmail: string) => {
-    if (userEmail.toLowerCase() === 'admin@admin.com' || userEmail.toLowerCase() === 'admin') {
-      alert('El usuario administrador principal es intocable y no se puede eliminar.');
+    if (
+      userEmail.toLowerCase() === "admin@admin.com" ||
+      userEmail.toLowerCase() === "admin"
+    ) {
+      alert(
+        "El usuario administrador principal es intocable y no se puede eliminar.",
+      );
       return;
     }
 
-    if (!confirm(`¿Estás seguro de que deseas eliminar al usuario ${userEmail}?`)) return;
+    if (
+      !confirm(`¿Estás seguro de que deseas eliminar al usuario ${userEmail}?`)
+    )
+      return;
 
     try {
       await deleteUser(userId);
-      setUsers(prev => prev.filter(u => u.id !== userId));
-      setMessage({ type: 'success', text: `Usuario ${userEmail} eliminado.` });
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      setMessage({ type: "success", text: `Usuario ${userEmail} eliminado.` });
       setTimeout(() => setMessage(null), 3000);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al eliminar usuario');
+      alert(err instanceof Error ? err.message : "Error al eliminar usuario");
     }
   };
 
@@ -139,9 +189,12 @@ export const UserManagementSection: React.FC = () => {
             <Users className="w-6 h-6 text-emerald-400" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Gestión de Usuarios del Backoffice</h2>
+            <h2 className="text-xl font-extrabold text-slate-900">
+              Gestión de Usuarios del Backoffice
+            </h2>
             <p className="text-xs text-slate-500">
-              Administra los accesos del sistema. Crea, edita o elimina usuarios del sistema.
+              Administra los accesos del sistema. Crea, edita o elimina usuarios
+              del sistema.
             </p>
           </div>
         </div>
@@ -150,12 +203,12 @@ export const UserManagementSection: React.FC = () => {
       {message && (
         <div
           className={`p-4 rounded-2xl border text-xs font-bold flex items-center gap-2 ${
-            message.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-rose-50 border-rose-200 text-rose-800'
+            message.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-rose-50 border-rose-200 text-rose-800"
           }`}
         >
-          {message.type === 'success' ? (
+          {message.type === "success" ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           ) : (
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -169,7 +222,9 @@ export const UserManagementSection: React.FC = () => {
         <div className="lg:col-span-5 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-5">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
             <UserPlus className="w-5 h-5 text-emerald-600" />
-            <h3 className="font-extrabold text-slate-900 text-sm">Crear Nuevo Usuario</h3>
+            <h3 className="font-extrabold text-slate-900 text-sm">
+              Crear Nuevo Usuario
+            </h3>
           </div>
 
           <form onSubmit={handleCreateUser} className="space-y-4">
@@ -181,7 +236,7 @@ export const UserManagementSection: React.FC = () => {
               <input
                 type="text"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="ej. asistente o usuario@tienda.com"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
                 required
@@ -196,7 +251,7 @@ export const UserManagementSection: React.FC = () => {
               <input
                 type="password"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
                 required
@@ -210,7 +265,7 @@ export const UserManagementSection: React.FC = () => {
               </label>
               <select
                 value={role}
-                onChange={e => setRole(e.target.value as 'admin' | 'staff')}
+                onChange={(e) => setRole(e.target.value as "admin" | "staff")}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-semibold text-slate-800"
               >
                 <option value="staff">Personal / Asistente (Staff)</option>
@@ -252,7 +307,9 @@ export const UserManagementSection: React.FC = () => {
           {isLoading ? (
             <div className="py-12 text-center text-slate-400 flex flex-col items-center justify-center space-y-2">
               <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-              <p className="text-xs font-semibold">Cargando lista de usuarios...</p>
+              <p className="text-xs font-semibold">
+                Cargando lista de usuarios...
+              </p>
             </div>
           ) : users.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">
@@ -260,26 +317,42 @@ export const UserManagementSection: React.FC = () => {
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {users.map(u => {
-                const isPrimaryAdmin = u.email.toLowerCase() === 'admin@admin.com' || u.email.toLowerCase() === 'admin';
+              {users.map((u) => {
+                const isPrimaryAdmin =
+                  u.email.toLowerCase() === "admin@admin.com" ||
+                  u.email.toLowerCase() === "admin";
 
                 return (
-                  <div key={u.id} className="py-3.5 flex items-center justify-between gap-4">
+                  <div
+                    key={u.id}
+                    className="py-3.5 flex items-center justify-between gap-4"
+                  >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold shrink-0 ${isPrimaryAdmin ? 'bg-slate-900 text-emerald-400' : 'bg-slate-100 text-slate-700'}`}>
-                        {isPrimaryAdmin ? <ShieldCheck className="w-5 h-5" /> : <Users className="w-4 h-4" />}
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold shrink-0 ${isPrimaryAdmin ? "bg-slate-900 text-emerald-400" : "bg-slate-100 text-slate-700"}`}
+                      >
+                        {isPrimaryAdmin ? (
+                          <ShieldCheck className="w-5 h-5" />
+                        ) : (
+                          <Users className="w-4 h-4" />
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-extrabold text-slate-900 truncate flex items-center gap-1.5">
                           <span>{u.email}</span>
                           {isPrimaryAdmin && (
                             <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-700 border border-emerald-500/30">
-                              Admin Principal (Intocable)
+                              Admin Principal
                             </span>
                           )}
                         </p>
                         <p className="text-[11px] text-slate-400">
-                          Rol: <strong className="capitalize text-slate-600">{u.role}</strong> • Creado: {new Date(u.createdAt).toLocaleDateString('es-ES')}
+                          Rol:{" "}
+                          <strong className="capitalize text-slate-600">
+                            {u.role}
+                          </strong>{" "}
+                          • Creado:{" "}
+                          {new Date(u.createdAt).toLocaleDateString("es-ES")}
                         </p>
                       </div>
                     </div>
@@ -326,8 +399,12 @@ export const UserManagementSection: React.FC = () => {
                 <Pencil className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900">Editar Usuario</h3>
-                <p className="text-xs text-slate-500">Actualiza las credenciales y rol del usuario</p>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Editar Usuario
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Actualiza las credenciales y rol del usuario
+                </p>
               </div>
             </div>
 
@@ -340,7 +417,7 @@ export const UserManagementSection: React.FC = () => {
                 <input
                   type="text"
                   value={editEmail}
-                  onChange={e => setEditEmail(e.target.value)}
+                  onChange={(e) => setEditEmail(e.target.value)}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
                   required
                 />
@@ -354,7 +431,7 @@ export const UserManagementSection: React.FC = () => {
                 <input
                   type="password"
                   value={editPassword}
-                  onChange={e => setEditPassword(e.target.value)}
+                  onChange={(e) => setEditPassword(e.target.value)}
                   placeholder="Dejar en blanco para no cambiar"
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
                 />
@@ -370,7 +447,9 @@ export const UserManagementSection: React.FC = () => {
                 </label>
                 <select
                   value={editRole}
-                  onChange={e => setEditRole(e.target.value as 'admin' | 'staff')}
+                  onChange={(e) =>
+                    setEditRole(e.target.value as "admin" | "staff")
+                  }
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-semibold text-slate-800"
                 >
                   <option value="staff">Personal / Asistente (Staff)</option>

@@ -1,13 +1,16 @@
-import React from 'react';
-import { ShoppingBag, ShieldCheck, PhoneCall, FileText } from 'lucide-react';
+import React from "react";
+import { ShoppingBag, ShieldCheck, PhoneCall, FileText } from "lucide-react";
 
 interface FooterProps {
   onOpenPrivacyPolicy?: () => void;
   whatsappNumber?: string;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onOpenPrivacyPolicy, whatsappNumber }) => {
-  const cleanPhone = (whatsappNumber || '50589098184').replace(/[^\d]/g, '');
+export const Footer: React.FC<FooterProps> = ({
+  onOpenPrivacyPolicy,
+  whatsappNumber,
+}) => {
+  const cleanPhone = (whatsappNumber || "50589098184").replace(/[^\d]/g, "");
 
   return (
     <footer className="mt-16 bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-10">
@@ -17,13 +20,13 @@ export const Footer: React.FC<FooterProps> = ({ onOpenPrivacyPolicy, whatsappNum
             <div className="w-8 h-8 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold">
               <ShoppingBag className="w-4 h-4" />
             </div>
-            <span className="text-sm font-bold text-white">Nica Market</span>
+            <span className="text-sm font-bold text-white">NicaMarket</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-6 text-slate-300">
-            <a 
-              href={`https://wa.me/${cleanPhone}`} 
-              target="_blank" 
+            <a
+              href={`https://wa.me/${cleanPhone}`}
+              target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 hover:text-emerald-400 transition-colors"
             >
@@ -38,8 +41,11 @@ export const Footer: React.FC<FooterProps> = ({ onOpenPrivacyPolicy, whatsappNum
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
-          <p>© {new Date().getFullYear()} Nica Market. Todos los derechos reservados.</p>
-          
+          <p>
+            © {new Date().getFullYear()} NicaMarket. Todos los derechos
+            reservados.
+          </p>
+
           <div className="flex items-center gap-4">
             {onOpenPrivacyPolicy && (
               <button
@@ -56,5 +62,3 @@ export const Footer: React.FC<FooterProps> = ({ onOpenPrivacyPolicy, whatsappNum
     </footer>
   );
 };
-
-

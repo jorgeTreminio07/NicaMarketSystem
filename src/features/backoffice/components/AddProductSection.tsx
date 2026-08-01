@@ -1,9 +1,21 @@
-import React, { useState } from 'react';
-import { Product } from '../../../types';
-import { Plus, Image as ImageIcon, CheckCircle2, Trash2, Sparkles, Tag, DollarSign, Package, FileText } from 'lucide-react';
+import React, { useState } from "react";
+import { Product } from "../../../types";
+import {
+  Plus,
+  Image as ImageIcon,
+  CheckCircle2,
+  Trash2,
+  Sparkles,
+  Tag,
+  DollarSign,
+  Package,
+  FileText,
+} from "lucide-react";
 
 interface AddProductSectionProps {
-  onAddProduct: (newProductData: Omit<Product, 'id' | 'createdAt'>) => Promise<Product>;
+  onAddProduct: (
+    newProductData: Omit<Product, "id" | "createdAt">,
+  ) => Promise<Product>;
   existingCategories: string[];
 }
 
@@ -11,41 +23,42 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
   onAddProduct,
   existingCategories,
 }) => {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
-  const [customCategory, setCustomCategory] = useState('');
-  const [price, setPrice] = useState<number | string>('');
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
+  const [price, setPrice] = useState<number | string>("");
   const [discountPercent, setDiscountPercent] = useState<number | string>(0);
   const [stock, setStock] = useState<number | string>(10);
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([
-    'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80'
+    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
   ]);
-  const [newUrlInput, setNewUrlInput] = useState('');
+  const [newUrlInput, setNewUrlInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleAddImageUrl = () => {
     if (newUrlInput.trim()) {
-      setImageUrls(prev => [...prev, newUrlInput.trim()]);
-      setNewUrlInput('');
+      setImageUrls((prev) => [...prev, newUrlInput.trim()]);
+      setNewUrlInput("");
     }
   };
 
   const handleRemoveImageUrl = (index: number) => {
     if (imageUrls.length <= 1) {
-      alert('Debes incluir al menos una imagen.');
+      alert("Debes incluir al menos una imagen.");
       return;
     }
-    setImageUrls(prev => prev.filter((_, i) => i !== index));
+    setImageUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalCategory = category === 'NUEVA' ? customCategory.trim() : category.trim();
+    const finalCategory =
+      category === "NUEVA" ? customCategory.trim() : category.trim();
 
-    if (!name.trim() || !finalCategory || price === '' || stock === '') {
-      alert('Por favor completa los campos requeridos (*).');
+    if (!name.trim() || !finalCategory || price === "" || stock === "") {
+      alert("Por favor completa los campos requeridos (*).");
       return;
     }
 
@@ -57,25 +70,37 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
         name: name.trim(),
         category: finalCategory,
         price: Math.max(0, Number(price) || 0),
-        discountPercent: Math.min(100, Math.max(0, Number(discountPercent) || 0)),
+        discountPercent: Math.min(
+          100,
+          Math.max(0, Number(discountPercent) || 0),
+        ),
         stock: Math.max(0, Number(stock) || 0),
         description: description.trim(),
-        images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80'],
+        images:
+          imageUrls.length > 0
+            ? imageUrls
+            : [
+                "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+              ],
       });
 
-      setSuccessMessage(`¡Producto "${name.trim()}" publicado exitosamente en la tienda!`);
+      setSuccessMessage(
+        `¡Producto "${name.trim()}" publicado exitosamente en la tienda!`,
+      );
 
       // Reset form
-      setName('');
-      setCategory('');
-      setCustomCategory('');
-      setPrice('');
+      setName("");
+      setCategory("");
+      setCustomCategory("");
+      setPrice("");
       setDiscountPercent(0);
       setStock(10);
-      setDescription('');
-      setImageUrls(['https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80']);
+      setDescription("");
+      setImageUrls([
+        "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+      ]);
     } catch (err) {
-      console.error('Error al agregar el producto:', err);
+      console.error("Error al agregar el producto:", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -89,9 +114,11 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
             <Plus className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Agregar Nuevo Producto</h2>
+            <h2 className="text-xl font-extrabold text-slate-900">
+              Agregar Nuevo Producto
+            </h2>
             <p className="text-xs text-slate-500">
-              Registra un nuevo producto en el catálogo. Se organizará alfabéticamente en la tienda.
+              Registra un nuevo producto en el catálogo.
             </p>
           </div>
         </div>
@@ -113,7 +140,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
             <input
               type="text"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
               placeholder="Ej. Tenis Deportivos Ultra Flex"
               required
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -128,12 +155,12 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
               </label>
               <select
                 value={category}
-                onChange={e => setCategory(e.target.value)}
+                onChange={(e) => setCategory(e.target.value)}
                 required
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
               >
                 <option value="">-- Selecciona Categoría --</option>
-                {existingCategories.map(cat => (
+                {existingCategories.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
                   </option>
@@ -142,7 +169,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
               </select>
             </div>
 
-            {category === 'NUEVA' && (
+            {category === "NUEVA" && (
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
                   Nombre de la Nueva Categoría *
@@ -150,7 +177,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
                 <input
                   type="text"
                   value={customCategory}
-                  onChange={e => setCustomCategory(e.target.value)}
+                  onChange={(e) => setCustomCategory(e.target.value)}
                   placeholder="Ej. Joyería, Tecnología..."
                   required
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -171,7 +198,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
                 step="0.01"
                 min="0"
                 value={price}
-                onChange={e => setPrice(e.target.value)}
+                onChange={(e) => setPrice(e.target.value)}
                 placeholder="0.00"
                 required
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -188,7 +215,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
                 min="0"
                 max="100"
                 value={discountPercent}
-                onChange={e => setDiscountPercent(e.target.value)}
+                onChange={(e) => setDiscountPercent(e.target.value)}
                 placeholder="0"
                 className="w-full px-4 py-2.5 bg-rose-50/50 border border-rose-200 rounded-xl text-sm font-bold text-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
               />
@@ -203,7 +230,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
                 type="number"
                 min="0"
                 value={stock}
-                onChange={e => setStock(e.target.value)}
+                onChange={(e) => setStock(e.target.value)}
                 placeholder="10"
                 required
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -220,7 +247,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
             <textarea
               rows={3}
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe las características principales, materiales, especificaciones, etc..."
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
             />
@@ -237,7 +264,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
               <input
                 type="url"
                 value={newUrlInput}
-                onChange={e => setNewUrlInput(e.target.value)}
+                onChange={(e) => setNewUrlInput(e.target.value)}
                 placeholder="URL de imagen (Ej: https://images.unsplash.com/...)"
                 className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
@@ -254,8 +281,15 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
             {/* List of Images */}
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 pt-2">
               {imageUrls.map((url, idx) => (
-                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 group bg-slate-100">
-                  <img src={url} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                <div
+                  key={idx}
+                  className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 group bg-slate-100"
+                >
+                  <img
+                    src={url}
+                    alt={`Preview ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                  />
                   <button
                     type="button"
                     onClick={() => handleRemoveImageUrl(idx)}

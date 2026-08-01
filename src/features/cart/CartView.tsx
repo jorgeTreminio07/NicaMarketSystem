@@ -1,14 +1,33 @@
-import React, { useState } from 'react';
-import { CartItem, PaymentType } from '../../types';
-import { ShoppingBag, Trash2, Plus, Minus, ArrowLeft, Send, CheckCircle2, User, Phone, ShoppingCart, CreditCard, Calendar, Check } from 'lucide-react';
-import { generateOrderWhatsAppUrl } from '../../utils/whatsapp';
+import React, { useState } from "react";
+import { CartItem, PaymentType } from "../../types";
+import {
+  ShoppingBag,
+  Trash2,
+  Plus,
+  Minus,
+  ArrowLeft,
+  Send,
+  CheckCircle2,
+  User,
+  Phone,
+  ShoppingCart,
+  CreditCard,
+  Calendar,
+  Check,
+} from "lucide-react";
+import { generateOrderWhatsAppUrl } from "../../utils/whatsapp";
 
 interface CartViewProps {
   items: CartItem[];
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onRemoveItem: (productId: string) => void;
   onClearCart: () => void;
-  onCheckout: (customerName: string, customerPhone: string, items: CartItem[], paymentType: PaymentType) => Promise<import('../../types').Order | null>;
+  onCheckout: (
+    customerName: string,
+    customerPhone: string,
+    items: CartItem[],
+    paymentType: PaymentType,
+  ) => Promise<import("../../types").Order | null>;
   onGoBackToStore: () => void;
   storeWhatsappNumber?: string;
 }
@@ -22,9 +41,9 @@ export const CartView: React.FC<CartViewProps> = ({
   onGoBackToStore,
   storeWhatsappNumber,
 }) => {
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [paymentType, setPaymentType] = useState<PaymentType>('contado');
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [paymentType, setPaymentType] = useState<PaymentType>("contado");
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderCompleted, setOrderCompleted] = useState<{
@@ -34,25 +53,28 @@ export const CartView: React.FC<CartViewProps> = ({
     orderNumber?: string;
   } | null>(null);
 
-  const getItemEffectivePrice = (prod: import('../../types').Product) => {
+  const getItemEffectivePrice = (prod: import("../../types").Product) => {
     if (prod.discountPercent && prod.discountPercent > 0) {
       return prod.price * (1 - prod.discountPercent / 100);
     }
     return prod.price;
   };
 
-  const subtotal = items.reduce((sum, item) => sum + getItemEffectivePrice(item.product) * item.quantity, 0);
+  const subtotal = items.reduce(
+    (sum, item) => sum + getItemEffectivePrice(item.product) * item.quantity,
+    0,
+  );
   const total = subtotal;
 
   const validateForm = () => {
     const errs: { name?: string; phone?: string } = {};
     if (!customerName.trim()) {
-      errs.name = 'Por favor ingrese su nombre completo.';
+      errs.name = "Por favor ingrese su nombre completo.";
     }
     if (!customerPhone.trim()) {
-      errs.phone = 'Por favor ingrese su número de teléfono.';
+      errs.phone = "Por favor ingrese su número de teléfono.";
     } else if (customerPhone.trim().length < 8) {
-      errs.phone = 'Ingrese un número de teléfono válido (mínimo 8 dígitos).';
+      errs.phone = "Ingrese un número de teléfono válido (mínimo 8 dígitos).";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -65,7 +87,12 @@ export const CartView: React.FC<CartViewProps> = ({
     setIsSubmitting(true);
     try {
       // 1. Send Order request to Backoffice database
-      const newOrder = await onCheckout(customerName.trim(), customerPhone.trim(), items, paymentType);
+      const newOrder = await onCheckout(
+        customerName.trim(),
+        customerPhone.trim(),
+        items,
+        paymentType,
+      );
 
       if (newOrder) {
         // 2. Generate WhatsApp URL for target store number
@@ -76,24 +103,24 @@ export const CartView: React.FC<CartViewProps> = ({
           total,
           newOrder.orderNumber,
           paymentType,
-          storeWhatsappNumber
+          storeWhatsappNumber,
         );
 
         // Open WhatsApp
-        window.open(whatsappUrl, '_blank');
+        window.open(whatsappUrl, "_blank");
 
         setOrderCompleted({
           success: true,
           whatsappUrl,
           customerName: customerName.trim(),
-          orderNumber: newOrder.orderNumber
+          orderNumber: newOrder.orderNumber,
         });
 
         // Clear cart items
         onClearCart();
       }
     } catch (err) {
-      console.error('Error procesando la compra:', err);
+      console.error("Error procesando la compra:", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -112,7 +139,12 @@ export const CartView: React.FC<CartViewProps> = ({
               ¡Pedido Registrado con Éxito!
             </h2>
             <p className="text-sm text-slate-600">
-              Gracias <strong className="text-slate-900">{orderCompleted.customerName}</strong>. Tu solicitud ha sido enviada al Backoffice y se ha abierto WhatsApp para notificar a nuestro equipo.
+              Gracias{" "}
+              <strong className="text-slate-900">
+                {orderCompleted.customerName}
+              </strong>
+              . Tu solicitud ha sido enviada al Backoffice y se ha abierto
+              WhatsApp para notificar a nuestro equipo.
             </p>
           </div>
 
@@ -123,7 +155,10 @@ export const CartView: React.FC<CartViewProps> = ({
             </p>
             <p className="font-bold flex items-center gap-1.5">
               <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>2. Mensaje de WhatsApp listo para enviar al +{storeWhatsappNumber || '50589098184'}</span>
+              <span>
+                2. Mensaje de WhatsApp listo para enviar al +
+                {storeWhatsappNumber || "50589098184"}
+              </span>
             </p>
           </div>
 
@@ -178,9 +213,12 @@ export const CartView: React.FC<CartViewProps> = ({
           <ShoppingCart className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900">Carrito de Compras</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900">
+            Carrito de Compras
+          </h1>
           <p className="text-xs text-slate-500">
-            Revisa los productos seleccionados e ingresa tus datos para procesar la compra.
+            Revisa los productos seleccionados e ingresa tus datos para procesar
+            la compra.
           </p>
         </div>
       </div>
@@ -190,7 +228,9 @@ export const CartView: React.FC<CartViewProps> = ({
           <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
             <ShoppingBag className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900">Tu carrito está vacío</h3>
+          <h3 className="text-lg font-bold text-slate-900">
+            Tu carrito está vacío
+          </h3>
           <p className="text-xs text-slate-500">
             Explora nuestro catálogo y agrega tus productos favoritos.
           </p>
@@ -213,15 +253,20 @@ export const CartView: React.FC<CartViewProps> = ({
             </h2>
 
             <div className="divide-y divide-slate-100">
-              {items.map(item => {
-                const itemImage = item.product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+              {items.map((item) => {
+                const itemImage =
+                  item.product.images?.[0] ||
+                  "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
                 const effectiveUnitPrice = getItemEffectivePrice(item.product);
-                const hasDiscount = Boolean(item.product.discountPercent && item.product.discountPercent > 0);
+                const hasDiscount = Boolean(
+                  item.product.discountPercent &&
+                  item.product.discountPercent > 0,
+                );
                 const itemTotal = effectiveUnitPrice * item.quantity;
 
                 return (
-                  <div 
-                    key={item.product.id} 
+                  <div
+                    key={item.product.id}
                     className="py-3 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 p-3 sm:p-0 my-2 sm:my-0 bg-slate-50/70 sm:bg-transparent rounded-2xl sm:rounded-none border border-slate-200/80 sm:border-none"
                   >
                     {/* Top part on mobile: Image + Details side-by-side */}
@@ -232,7 +277,8 @@ export const CartView: React.FC<CartViewProps> = ({
                           alt={item.product.name}
                           className="w-16 h-16 rounded-xl object-cover border border-slate-200"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+                            (e.target as HTMLImageElement).src =
+                              "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
                           }}
                         />
                         {hasDiscount && (
@@ -253,13 +299,20 @@ export const CartView: React.FC<CartViewProps> = ({
                               C$ {item.product.price.toFixed(2)}
                             </span>
                           )}
-                          <span className={`font-bold ${hasDiscount ? 'text-rose-600' : 'text-slate-800'}`}>
+                          <span
+                            className={`font-bold ${hasDiscount ? "text-rose-600" : "text-slate-800"}`}
+                          >
                             C$ {effectiveUnitPrice.toFixed(2)} c/u
                           </span>
-                          <span className="text-emerald-600 font-medium">• {item.product.category}</span>
+                          <span className="text-emerald-600 font-medium">
+                            • {item.product.category}
+                          </span>
                         </p>
                         <div className="text-xs font-extrabold text-slate-900 mt-1">
-                          Subtotal: <span className="text-emerald-700 font-bold">C$ {itemTotal.toFixed(2)}</span>
+                          Subtotal:{" "}
+                          <span className="text-emerald-700 font-bold">
+                            C$ {itemTotal.toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -268,7 +321,9 @@ export const CartView: React.FC<CartViewProps> = ({
                     <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t border-slate-200/60 sm:border-none">
                       <div className="flex items-center bg-white sm:bg-slate-100 rounded-xl p-1 border border-slate-200 shrink-0">
                         <button
-                          onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
+                          onClick={() =>
+                            onUpdateQuantity(item.product.id, item.quantity - 1)
+                          }
                           className="w-7 h-7 rounded-lg bg-slate-100 sm:bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-all"
                           aria-label="Disminuir cantidad"
                         >
@@ -278,7 +333,9 @@ export const CartView: React.FC<CartViewProps> = ({
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
+                          onClick={() =>
+                            onUpdateQuantity(item.product.id, item.quantity + 1)
+                          }
                           disabled={item.quantity >= item.product.stock}
                           className="w-7 h-7 rounded-lg bg-slate-100 sm:bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 disabled:opacity-40 transition-all"
                           aria-label="Aumentar cantidad"
@@ -319,18 +376,23 @@ export const CartView: React.FC<CartViewProps> = ({
                 <input
                   type="text"
                   value={customerName}
-                  onChange={e => {
+                  onChange={(e) => {
                     setCustomerName(e.target.value);
-                    if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
+                    if (errors.name)
+                      setErrors((prev) => ({ ...prev, name: undefined }));
                   }}
                   placeholder="Ej. Juan Pérez López"
                   className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none transition-all ${
                     errors.name
-                      ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                      : 'border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'
+                      ? "border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                      : "border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   }`}
                 />
-                {errors.name && <p className="text-xs text-rose-500 mt-1 font-medium">{errors.name}</p>}
+                {errors.name && (
+                  <p className="text-xs text-rose-500 mt-1 font-medium">
+                    {errors.name}
+                  </p>
+                )}
               </div>
 
               {/* Customer Phone Number */}
@@ -342,18 +404,23 @@ export const CartView: React.FC<CartViewProps> = ({
                 <input
                   type="tel"
                   value={customerPhone}
-                  onChange={e => {
+                  onChange={(e) => {
                     setCustomerPhone(e.target.value);
-                    if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
+                    if (errors.phone)
+                      setErrors((prev) => ({ ...prev, phone: undefined }));
                   }}
                   placeholder="Ej. 89098184 o +505 89098184"
                   className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none transition-all ${
                     errors.phone
-                      ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                      : 'border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'
+                      ? "border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                      : "border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   }`}
                 />
-                {errors.phone && <p className="text-xs text-rose-500 mt-1 font-medium">{errors.phone}</p>}
+                {errors.phone && (
+                  <p className="text-xs text-rose-500 mt-1 font-medium">
+                    {errors.phone}
+                  </p>
+                )}
               </div>
 
               {/* Payment Option Selector */}
@@ -366,20 +433,28 @@ export const CartView: React.FC<CartViewProps> = ({
                 <div className="space-y-2">
                   {/* De Contado */}
                   <label
-                    onClick={() => setPaymentType('contado')}
+                    onClick={() => setPaymentType("contado")}
                     className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                      paymentType === 'contado'
-                        ? 'border-emerald-600 bg-emerald-50/50 shadow-sm ring-1 ring-emerald-600/30'
-                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'
+                      paymentType === "contado"
+                        ? "border-emerald-600 bg-emerald-50/50 shadow-sm ring-1 ring-emerald-600/30"
+                        : "border-slate-200 bg-slate-50 hover:bg-slate-100/80"
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentType === 'contado' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'}`}>
-                        {paymentType === 'contado' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      <div
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentType === "contado" ? "border-emerald-600 bg-emerald-600" : "border-slate-300"}`}
+                      >
+                        {paymentType === "contado" && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                        )}
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900">De Contado</p>
-                        <p className="text-[11px] text-slate-500">1 solo pago al recibir</p>
+                        <p className="text-xs font-bold text-slate-900">
+                          De Contado
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          1 solo pago al recibir
+                        </p>
                       </div>
                     </div>
                     <span className="text-xs font-extrabold text-slate-900">
@@ -389,53 +464,73 @@ export const CartView: React.FC<CartViewProps> = ({
 
                   {/* 2 Cuotas Quincenales */}
                   <label
-                    onClick={() => setPaymentType('cuotas_2')}
+                    onClick={() => setPaymentType("cuotas_2")}
                     className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                      paymentType === 'cuotas_2'
-                        ? 'border-emerald-600 bg-emerald-50/50 shadow-sm ring-1 ring-emerald-600/30'
-                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'
+                      paymentType === "cuotas_2"
+                        ? "border-emerald-600 bg-emerald-50/50 shadow-sm ring-1 ring-emerald-600/30"
+                        : "border-slate-200 bg-slate-50 hover:bg-slate-100/80"
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentType === 'cuotas_2' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'}`}>
-                        {paymentType === 'cuotas_2' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      <div
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentType === "cuotas_2" ? "border-emerald-600 bg-emerald-600" : "border-slate-300"}`}
+                      >
+                        {paymentType === "cuotas_2" && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                        )}
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900">A Cuotas - 2 Pagos Quincenales</p>
-                        <p className="text-[11px] text-slate-500">1 pago cada 15 días</p>
+                        <p className="text-xs font-bold text-slate-900">
+                          A Cuotas - 2 Pagos Quincenales
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          1 pago cada 15 días
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <span className="text-xs font-extrabold text-emerald-700 block">
                         2x C$ {(total / 2).toFixed(2)}
                       </span>
-                      <span className="text-[10px] text-slate-400">Total: C$ {total.toFixed(2)}</span>
+                      <span className="text-[10px] text-slate-400">
+                        Total: C$ {total.toFixed(2)}
+                      </span>
                     </div>
                   </label>
 
                   {/* 4 Cuotas Semanales */}
                   <label
-                    onClick={() => setPaymentType('cuotas_4')}
+                    onClick={() => setPaymentType("cuotas_4")}
                     className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                      paymentType === 'cuotas_4'
-                        ? 'border-emerald-600 bg-emerald-50/50 shadow-sm ring-1 ring-emerald-600/30'
-                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'
+                      paymentType === "cuotas_4"
+                        ? "border-emerald-600 bg-emerald-50/50 shadow-sm ring-1 ring-emerald-600/30"
+                        : "border-slate-200 bg-slate-50 hover:bg-slate-100/80"
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentType === 'cuotas_4' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'}`}>
-                        {paymentType === 'cuotas_4' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      <div
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentType === "cuotas_4" ? "border-emerald-600 bg-emerald-600" : "border-slate-300"}`}
+                      >
+                        {paymentType === "cuotas_4" && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                        )}
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900">A Cuotas - 4 Pagos Semanales</p>
-                        <p className="text-[11px] text-slate-500">1 pago cada semana</p>
+                        <p className="text-xs font-bold text-slate-900">
+                          A Cuotas - 4 Pagos Semanales
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          1 pago cada semana
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <span className="text-xs font-extrabold text-emerald-700 block">
                         4x C$ {(total / 4).toFixed(2)}
                       </span>
-                      <span className="text-[10px] text-slate-400">Total: C$ {total.toFixed(2)}</span>
+                      <span className="text-[10px] text-slate-400">
+                        Total: C$ {total.toFixed(2)}
+                      </span>
                     </div>
                   </label>
                 </div>
@@ -445,21 +540,34 @@ export const CartView: React.FC<CartViewProps> = ({
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 text-xs">
                 <div className="flex justify-between text-slate-600">
                   <span>Subtotal de Productos:</span>
-                  <span className="font-semibold text-slate-900">C$ {subtotal.toFixed(2)}</span>
+                  <span className="font-semibold text-slate-900">
+                    C$ {subtotal.toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-slate-600">
-                  <span>Envío & Coordinación:</span>
-                  <span className="font-semibold text-emerald-600">Gratis por WhatsApp</span>
+                  <span>Coordinación:</span>
+                  <span className="font-semibold text-emerald-600">
+                    Gratis por WhatsApp
+                  </span>
                 </div>
                 <div className="pt-2 border-t border-slate-200 flex justify-between text-base font-extrabold text-slate-900">
                   <span>Total a Pagar:</span>
-                  <span className="text-emerald-600">C$ {total.toFixed(2)}</span>
+                  <span className="text-emerald-600">
+                    C$ {total.toFixed(2)}
+                  </span>
                 </div>
               </div>
 
               {/* Notice */}
               <p className="text-[11px] text-slate-400 leading-normal">
-                Al hacer clic en <strong className="text-slate-600">Comprar</strong>, tu pedido se guardará en la lista de solicitudes del Backoffice y se abrirá un chat de WhatsApp con el número <strong className="text-slate-600">+{storeWhatsappNumber || '50589098184'}</strong>.
+                Al hacer clic en{" "}
+                <strong className="text-slate-600">Comprar</strong>, tu pedido
+                se guardará en la lista de solicitudes del Backoffice y se
+                abrirá un chat de WhatsApp con el número{" "}
+                <strong className="text-slate-600">
+                  +{storeWhatsappNumber || "50589098184"}
+                </strong>
+                .
               </p>
 
               {/* Submit Buy Button */}
