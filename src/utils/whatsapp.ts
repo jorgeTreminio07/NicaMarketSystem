@@ -33,7 +33,7 @@ export function generateOrderWhatsAppUrl(
   paymentType: PaymentType = 'contado',
   targetPhoneNumber?: string
 ): string {
-  let text = `*¡NUEVO PEDIDO DE COMPRA!*\n\n`;
+  let text = `*NUEVO PEDIDO DE COMPRA*\n\n`;
   if (orderNumber) {
     text += `*Solicitud N°:* ${orderNumber}\n`;
   }
@@ -56,7 +56,7 @@ export function generateOrderWhatsAppUrl(
   });
 
   text += `\n*Total a pagar:* C$ ${total.toFixed(2)}\n`;
-  text += `\nQuedo a la espera de la confirmación de mi pedido. ¡Muchas gracias!`;
+  text += `\nQuedo a la espera de la confirmación de mi pedido. Gracias.`;
 
   const destPhone = sanitizePhoneNumber(targetPhoneNumber || STORE_WHATSAPP_NUMBER);
   return `https://wa.me/${destPhone}?text=${encodeURIComponent(text)}`;
@@ -67,7 +67,7 @@ export function generateApprovalWhatsAppUrl(order: Order): string {
   const solicitudNum = order.orderNumber || order.id.slice(0, 8);
   const paymentType = order.paymentType || 'contado';
 
-  let text = `*¡SU PEDIDO HA SIDO APROBADO!*\n\n`;
+  let text = `*PEDIDO APROBADO*\n\n`;
   text += `Hola *${order.customerName}*,\n`;
   text += `Nos complace informarle que su solicitud de compra *N° ${solicitudNum}* ha sido *APROBADA*.\n\n`;
   text += `*Resumen de su compra:*\n`;
@@ -108,19 +108,19 @@ export function generateApprovalWhatsAppUrl(order: Order): string {
           year: 'numeric'
         });
         const periodLabel = paymentType === 'cuotas_2' ? `Cuota ${i} (15 días)` : `Cuota ${i} (Semana ${i})`;
-        text += `• ${periodLabel}: ${formattedDate} — C$ ${quotaAmount.toFixed(2)}\n`;
+        text += `• ${periodLabel}: ${formattedDate} - C$ ${quotaAmount.toFixed(2)}\n`;
       }
     }
   }
 
   // Cash or Bank transfer payment details
   text += `\n*Métodos de Pago Aceptados:*\n`;
-  text += `Puede realizar su pago en *efectivo* o mediante *transferencia bancaria* a las siguientes cuentas:\n\n`;
-  text += `💳 *Lafise C$:* 138028153\n`;
-  text += `💳 *Lafise USD:* 131255322\n`;
-  text += `📱 *Billetera móvil Banpro:* 89061446\n`;
-  text += `👤 *Titular:* Patricia de los Angeles Ruiz Sarria\n\n`;
-  text += `Estamos coordinando la entrega de sus productos. ¡Gracias por preferirnos!`;
+  text += `Puede realizar su pago en efectivo o mediante transferencia bancaria a las siguientes cuentas:\n\n`;
+  text += `*Lafise C$:* 138028153\n`;
+  text += `*Lafise USD:* 131255322\n`;
+  text += `*Billetera móvil Banpro:* 89061446\n`;
+  text += `*Titular:* Patricia de los Angeles Ruiz Sarria\n\n`;
+  text += `Estamos coordinando la entrega de sus productos. Gracias por preferirnos.`;
 
   return `https://wa.me/${customerPhoneClean}?text=${encodeURIComponent(text)}`;
 }
