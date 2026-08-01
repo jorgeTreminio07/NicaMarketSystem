@@ -22,8 +22,8 @@ cp .env.example .env
 Asegúrate de que tu `.env` tenga las credenciales de Supabase:
 
 ```env
-VITE_SUPABASE_URL="https://xjiwhdnrxpsbbegqjicp.supabase.co"
-VITE_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqaXdoZG5yeHBzYmJlZ3FqaWNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNzkyMTgsImV4cCI6MjEwMDk1NTIxOH0.8y6PT2Uyn2ytdc4LfhyzSY_EWNPRmieoYYIaDyPEy3E"
+VITE_SUPABASE_URL="https://.supabase.co"
+VITE_SUPABASE_ANON_KEY="."
 ```
 
 ---
