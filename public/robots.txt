@@ -1,0 +1,7 @@
+# Robots.txt for NicaMarket
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /#backoffice
+
+Sitemap: /sitemap.xml

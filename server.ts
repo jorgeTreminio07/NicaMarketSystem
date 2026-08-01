@@ -1208,6 +1208,40 @@ async function startServer() {
     res.json(storeSettings);
   });
 
+  // === SEO & SITEMAP ENDPOINTS ===
+  app.get('/robots.txt', (req, res) => {
+    res.type('text/plain');
+    const host = req.get('host') || 'localhost:3000';
+    const protocol = req.protocol || 'http';
+    res.send(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /#backoffice\n\nSitemap: ${protocol}://${host}/sitemap.xml\n`);
+  });
+
+  app.get('/sitemap.xml', (req, res) => {
+    res.type('application/xml');
+    const host = req.get('host') || 'localhost:3000';
+    const protocol = req.protocol || 'http';
+    const baseUrl = `${protocol}://${host}`;
+    
+    const productUrls = (products || []).map(p => `
+  <url>
+    <loc>${baseUrl}/#product-${p.id}</loc>
+    <lastmod>${p.updatedAt ? new Date(p.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`).join('');
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}/</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>${productUrls}
+</urlset>`;
+    res.send(xml);
+  });
+
   // === AUTHENTICATION & USERS ENDPOINTS ===
   app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
