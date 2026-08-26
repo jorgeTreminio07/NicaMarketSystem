@@ -89,15 +89,6 @@ export const CreditManagementSection: React.FC<
     );
   };
 
-  // Helper: get overdue amount for a single order
-  const getOverdueAmount = (o: Order): number => {
-    if (!o.paymentSchedule || o.paymentSchedule.length === 0) return 0;
-    const today = new Date().toISOString().split("T")[0];
-    return o.paymentSchedule
-      .filter((s) => s.status !== "Pagado" && s.dueDate < today)
-      .reduce((sum, s) => sum + (s.expectedAmount - s.paidAmount), 0);
-  };
-
   // Counts
   const inProcessCount = approvedOrders.filter(
     (o) => (o.creditStatus || "En Proceso") === "En Proceso" && !hasOverdueInstallments(o),
@@ -105,11 +96,9 @@ export const CreditManagementSection: React.FC<
   const paidCount = approvedOrders.filter(
     (o) => o.creditStatus === "Pagado",
   ).length;
-  const overdueOrders = approvedOrders.filter(
+  const overdueCount = approvedOrders.filter(
     (o) => o.creditStatus === "En Mora" || hasOverdueInstallments(o),
-  );
-  const overdueCount = overdueOrders.length;
-  const overdueAmount = overdueOrders.reduce((sum, o) => sum + getOverdueAmount(o), 0);
+  ).length;
 
   const totalPortfolioValue = approvedOrders.reduce(
     (sum, o) => sum + o.total,
@@ -400,8 +389,10 @@ export const CreditManagementSection: React.FC<
             <h3 className="text-xl sm:text-2xl font-black text-rose-600 mt-0.5">
               {overdueCount}
             </h3>
-            <p className="text-[10px] font-bold text-rose-500 mt-1">
-              C$ {overdueAmount.toFixed(2)} por cobrar
+            <p className="text-[10px] text-slate-500 font-medium mt-1">
+              {overdueCount === 0
+                ? "Sin pagos vencidos"
+                : "Clic para ver detalle"}
             </p>
           </div>
           <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600">
