@@ -80,36 +80,22 @@ export const CreditManagementSection: React.FC<
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
-  // Helper: get today's date in YYYY-MM-DD using local timezone (not UTC)
-  const getLocalToday = (): string => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  };
-
   // Helper: check if an order has at least one overdue installment
   const hasOverdueInstallments = (o: Order): boolean => {
     if (!o.paymentSchedule || o.paymentSchedule.length === 0) return false;
-    const today = getLocalToday();
+    const today = new Date().toISOString().split("T")[0];
     return o.paymentSchedule.some(
       (s) => s.status !== "Pagado" && s.dueDate < today,
     );
   };
 
-  // Helper: get total overdue amount for a single order (all overdue installments)
+  // Helper: get overdue amount for a single order
   const getOverdueAmount = (o: Order): number => {
     if (!o.paymentSchedule || o.paymentSchedule.length === 0) return 0;
-    const today = getLocalToday();
-    const overdueInstallments = o.paymentSchedule.filter(
-      (s) => s.status !== "Pagado" && s.dueDate < today,
-    );
-    if (overdueInstallments.length === 0) return 0;
-    return overdueInstallments.reduce(
-      (sum, s) => sum + Math.max(0, s.expectedAmount - s.paidAmount),
-      0,
-    );
+    const today = new Date().toISOString().split("T")[0];
+    return o.paymentSchedule
+      .filter((s) => s.status !== "Pagado" && s.dueDate < today)
+      .reduce((sum, s) => sum + (s.expectedAmount - s.paidAmount), 0);
   };
 
   // Counts
