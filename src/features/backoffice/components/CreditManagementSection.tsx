@@ -80,15 +80,24 @@ export const CreditManagementSection: React.FC<
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
+  // Helper: check if an order has at least one overdue installment
+  const hasOverdueInstallments = (o: Order): boolean => {
+    if (!o.paymentSchedule || o.paymentSchedule.length === 0) return false;
+    const today = new Date().toISOString().split("T")[0];
+    return o.paymentSchedule.some(
+      (s) => s.status !== "Pagado" && s.dueDate < today,
+    );
+  };
+
   // Counts
   const inProcessCount = approvedOrders.filter(
-    (o) => (o.creditStatus || "En Proceso") === "En Proceso",
+    (o) => (o.creditStatus || "En Proceso") === "En Proceso" && !hasOverdueInstallments(o),
   ).length;
   const paidCount = approvedOrders.filter(
     (o) => o.creditStatus === "Pagado",
   ).length;
   const overdueCount = approvedOrders.filter(
-    (o) => o.creditStatus === "En Mora",
+    (o) => o.creditStatus === "En Mora" || hasOverdueInstallments(o),
   ).length;
 
   const totalPortfolioValue = approvedOrders.reduce(
@@ -105,7 +114,9 @@ export const CreditManagementSection: React.FC<
   const filteredOrders = approvedOrders.filter((order) => {
     const cStatus = order.creditStatus || "En Proceso";
 
-    if (statusFilter !== "Todos" && cStatus !== statusFilter) {
+    if (statusFilter === "En Mora") {
+      if (!(cStatus === "En Mora" || hasOverdueInstallments(order))) return false;
+    } else if (statusFilter !== "Todos" && cStatus !== statusFilter) {
       return false;
     }
 
@@ -308,7 +319,7 @@ export const CreditManagementSection: React.FC<
   return (
     <div className="space-y-6">
       {/* Overview Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -362,6 +373,32 @@ export const CreditManagementSection: React.FC<
             <Clock className="w-5 h-5" />
           </div>
         </div>
+
+        <button
+          onClick={() => setStatusFilter("En Mora")}
+          className={`bg-white p-4 sm:p-5 rounded-2xl border shadow-sm flex items-center justify-between transition-all cursor-pointer hover:shadow-md ${
+            statusFilter === "En Mora"
+              ? "border-rose-400 bg-rose-50"
+              : "border-slate-200 hover:border-rose-300"
+          }`}
+        >
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Pagos Vencidos
+            </p>
+            <h3 className="text-xl sm:text-2xl font-black text-rose-600 mt-0.5">
+              {overdueCount}
+            </h3>
+            <p className="text-[10px] text-slate-500 font-medium mt-1">
+              {overdueCount === 0
+                ? "Sin pagos vencidos"
+                : "Clic para ver detalle"}
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+        </button>
       </div>
 
       {/* Header Filters */}
@@ -478,7 +515,7 @@ export const CreditManagementSection: React.FC<
               const remainingBalance = Math.max(0, effectiveTotal - totalPaid);
               const isPagado =
                 order.creditStatus === "Pagado" || remainingBalance <= 0;
-              const isEnMora = order.creditStatus === "En Mora";
+              const isEnMora = order.creditStatus === "En Mora" || hasOverdueInstallments(order);
               const progressPercent = Math.min(
                 100,
                 Math.round((totalPaid / (effectiveTotal || 1)) * 100),
@@ -635,7 +672,7 @@ export const CreditManagementSection: React.FC<
           const remainingBalance = Math.max(0, effectiveTotal - totalPaid);
           const isPagado =
             order.creditStatus === "Pagado" || remainingBalance <= 0;
-          const isEnMora = order.creditStatus === "En Mora";
+          const isEnMora = order.creditStatus === "En Mora" || hasOverdueInstallments(order);
           const progressPercent = Math.min(
             100,
             Math.round((totalPaid / (effectiveTotal || 1)) * 100),
