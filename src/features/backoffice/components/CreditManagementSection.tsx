@@ -22,7 +22,9 @@ import {
   FileText,
   Loader2,
   Tag,
+  MessageCircle,
 } from "lucide-react";
+import { generateOverduePaymentReminderUrl } from "../../../utils/whatsapp";
 
 interface CreditManagementSectionProps {
   orders: Order[];
@@ -645,6 +647,19 @@ export const CreditManagementSection: React.FC<
                     <Eye className="w-3.5 h-3.5" />
                     <span>Ver Detalle y Abonos</span>
                   </button>
+
+                  {isEnMora && !isPagado && (
+                    <a
+                      href={generateOverduePaymentReminderUrl(order)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full py-2 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-emerald-200 hover:border-emerald-600"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Enviar Recordatorio WhatsApp</span>
+                    </a>
+                  )}
                 </div>
               );
             })}

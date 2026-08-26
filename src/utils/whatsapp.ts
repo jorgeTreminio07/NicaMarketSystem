@@ -136,3 +136,56 @@ export function generateRejectionWhatsAppUrl(order: Order): string {
 
   return `https://wa.me/${customerPhoneClean}?text=${encodeURIComponent(text)}`;
 }
+
+export function generateOverduePaymentReminderUrl(order: Order): string {
+  const customerPhoneClean = sanitizePhoneNumber(order.customerPhone);
+  const solicitudNum = order.orderNumber || order.id.slice(0, 8);
+  const today = new Date().toISOString().split('T')[0];
+
+  const schedule = order.paymentSchedule || [];
+
+  const overdueInstallments = schedule.filter(
+    s => s.status !== 'Pagado' && s.dueDate < today
+  );
+
+  const pendingInstallments = schedule.filter(
+    s => s.status !== 'Pagado' && s.dueDate >= today
+  );
+
+  const totalOverdue = overdueInstallments.reduce(
+    (sum, s) => sum + (s.expectedAmount - s.paidAmount), 0
+  );
+
+  let text = `*RECORDATORIO DE PAGO VENCIDO*\n\n`;
+  text += `Hola *${order.customerName}*, le informamos que tiene pagos vencidos en su solicitud *N° ${solicitudNum}*.\n\n`;
+
+  text += `*Cuotas vencidas:*\n`;
+  overdueInstallments.forEach(s => {
+    const dateFormatted = new Date(s.dueDate + 'T12:00:00').toLocaleDateString('es-NI', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+    const pending = s.expectedAmount - s.paidAmount;
+    text += `• Cuota #${s.installmentNumber} (${dateFormatted}): C$ ${pending.toFixed(2)} pendiente\n`;
+  });
+
+  text += `\n*Total vencido:* C$ ${totalOverdue.toFixed(2)}\n`;
+
+  if (pendingInstallments.length > 0) {
+    text += `\n*Próximas cuotas pendientes:*\n`;
+    pendingInstallments.forEach(s => {
+      const dateFormatted = new Date(s.dueDate + 'T12:00:00').toLocaleDateString('es-NI', {
+        day: '2-digit', month: '2-digit', year: 'numeric'
+      });
+      text += `• Cuota #${s.installmentNumber} (${dateFormatted}): C$ ${(s.expectedAmount - s.paidAmount).toFixed(2)}\n`;
+    });
+  }
+
+  text += `\n*Métodos de Pago:*\n`;
+  text += `Lafise C$: 138028153\n`;
+  text += `Lafise USD: 131255322\n`;
+  text += `Billetera móvil Banpro: 89061446\n`;
+  text += `Titular: Patricia de los Angeles Ruiz Sarria\n\n`;
+  text += `Agradecemos regularizar su situación a la brevedad. Gracias.`;
+
+  return `https://wa.me/${customerPhoneClean}?text=${encodeURIComponent(text)}`;
+}
