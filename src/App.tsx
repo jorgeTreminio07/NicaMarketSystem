@@ -639,29 +639,7 @@ export default function App() {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Database Status Banner inside Backoffice */}
-              {supabaseStatus && (
-                <div className="max-w-7xl mx-auto px-4 pt-4">
-                  <div
-                    className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
-                      supabaseStatus.connected
-                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                        : "bg-amber-500/10 border-amber-500/30 text-amber-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      {/* <span className="font-semibold">Estado de Base de Datos:</span> */}
-                      <span>{supabaseStatus.message}</span>
-                      {currentUser && (
-                        <span className="ml-2 font-mono text-emerald-400">
-                          (Usuario: {currentUser.email})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+              
 
               <BackofficeView
                 currentUser={currentUser}
