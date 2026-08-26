@@ -33,7 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-amber-400" />
             <span className="font-semibold">
-              Modo Proyecto Separado: Backoffice de Administración
+              Modo Backoffice
             </span>
           </div>
           <button

@@ -144,7 +144,7 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Panel Administrativo Backoffice</span>
+            <span>Panel Administrativo</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             Gestión de Tienda, Pedidos & Cartera
