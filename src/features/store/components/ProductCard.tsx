@@ -1,6 +1,7 @@
 import React from 'react';
-import { ShoppingCart, Eye, Check, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Eye, Check, AlertTriangle, Sparkles } from 'lucide-react';
 import { Product } from '../../../types';
+import { isRecentlyAdded } from '../../../utils/productUtils';
 
 interface ProductCardProps {
   product: Product;
@@ -16,6 +17,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   isAdded = false,
 }) => {
   const isOutOfStock = product.stock <= 0;
+  const isRecentlyAddedBadge = isRecentlyAdded(product.createdAt);
   const primaryImage = product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
   const hasDiscount = Boolean(product.discountPercent && product.discountPercent > 0);
   const discountedPrice = hasDiscount 
@@ -61,6 +63,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             ¡Solo {product.stock}!
           </span>
         ) : null}
+
+        {/* Recently Added Badge (bottom-right) */}
+        {isRecentlyAddedBadge && (
+          <span className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold bg-emerald-600 text-white shadow-sm flex items-center gap-1 z-10">
+            <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+            Agregado Recientemente
+          </span>
+        )}
 
         {/* Quick Details Hover Hint */}
         <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none hidden sm:flex">

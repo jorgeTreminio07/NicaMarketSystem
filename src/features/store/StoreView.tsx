@@ -4,6 +4,7 @@ import { ProductCard } from "./components/ProductCard";
 import { CategoryFilter } from "./components/CategoryFilter";
 import { SearchBar } from "./components/SearchBar";
 import { ProductDetailModal } from "./components/ProductDetailModal";
+import { isRecentlyAdded } from "../../utils/productUtils";
 import { Package, Sparkles, RefreshCw, Loader2 } from "lucide-react";
 
 interface StoreViewProps {
@@ -76,10 +77,13 @@ export const StoreView: React.FC<StoreViewProps> = ({
       );
     }
 
-    // Alphabetical order guarantee (A-Z)
-    return result.sort((a, b) =>
-      a.name.localeCompare(b.name, "es", { sensitivity: "base" }),
-    );
+    // Recently added first, then alphabetical order (A-Z)
+    return result.sort((a, b) => {
+      const aRecent = isRecentlyAdded(a.createdAt);
+      const bRecent = isRecentlyAdded(b.createdAt);
+      if (aRecent !== bRecent) return aRecent ? -1 : 1;
+      return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+    });
   }, [products, selectedCategory, searchQuery, onlyAvailable]);
 
   // Paginated visible products
@@ -197,7 +201,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
           </span>
         </div>
         <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-          Ordenados alfabéticamente (A-Z)
+          Recientes primero, luego alfabético (A-Z)
         </span>
       </div>
 
