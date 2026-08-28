@@ -638,35 +638,33 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
-              
-
-              <BackofficeView
-                currentUser={currentUser}
-                isAdmin={isAdmin}
-                products={products}
-                orders={orders}
-                onApproveOrder={handleApproveOrder}
-                onRejectOrder={handleRejectOrder}
-                onDeleteOrder={handleDeleteOrder}
-                onUpdateOrderPaymentType={handleUpdateOrderPaymentType}
-                onUpdateStock={handleUpdateStock}
-                onUpdateProduct={handleUpdateProduct}
-                onDeleteProduct={handleDeleteProduct}
-                onAddProduct={handleAddProduct}
-                onRefresh={loadData}
-                isLoading={isLoading}
-                onStoreSettingsUpdated={(updated) => setStoreSettings(updated)}
-              />
-            </div>
+            <BackofficeView
+              currentUser={currentUser}
+              isAdmin={isAdmin}
+              products={products}
+              orders={orders}
+              onApproveOrder={handleApproveOrder}
+              onRejectOrder={handleRejectOrder}
+              onDeleteOrder={handleDeleteOrder}
+              onUpdateOrderPaymentType={handleUpdateOrderPaymentType}
+              onUpdateStock={handleUpdateStock}
+              onUpdateProduct={handleUpdateProduct}
+              onDeleteProduct={handleDeleteProduct}
+              onAddProduct={handleAddProduct}
+              onRefresh={loadData}
+              isLoading={isLoading}
+              onStoreSettingsUpdated={(updated) => setStoreSettings(updated)}
+            />
           ))}
       </main>
 
       {/* Footer */}
-      <Footer
-        onOpenPrivacyPolicy={() => setShowPrivacyModal(true)}
-        whatsappNumber={storeSettings?.whatsappNumber}
-      />
+      {activeTab !== "backoffice" && (
+        <Footer
+          onOpenPrivacyPolicy={() => setShowPrivacyModal(true)}
+          whatsappNumber={storeSettings?.whatsappNumber}
+        />
+      )}
 
       {/* Privacy Policy Modal */}
       <PrivacyPolicyModal
