@@ -146,7 +146,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
   {/* Only available products toggle */}
   <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white shrink-0 cursor-pointer select-none group" title="Mostrar solo productos disponibles" onClick={() => setOnlyAvailable((prev) => !prev)}>
     <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-600 transition-colors whitespace-nowrap">
-      Solo disponibles
+      Mostrar disponibles
     </span>
     <button
       type="button"
@@ -201,7 +201,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
           </span>
         </div>
         <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-          Recientes primero, luego alfabético (A-Z)
+          (A-Z)
         </span>
       </div>
 
