@@ -25,6 +25,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("Todas");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [onlyAvailable, setOnlyAvailable] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Automatic Infinite Scroll state (Charge 10 by 10)
@@ -34,7 +35,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
   // Reset visibleCount on filter change
   useEffect(() => {
     setVisibleCount(10);
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, onlyAvailable]);
 
   // Extract unique categories from product list
   const categories = useMemo(() => {
@@ -55,6 +56,11 @@ export const StoreView: React.FC<StoreViewProps> = ({
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
+    // Only available (in stock) filter
+    if (onlyAvailable) {
+      result = result.filter((p) => p.stock > 0);
+    }
+
     // Category filter
     if (selectedCategory !== "Todas") {
       result = result.filter((p) => p.category === selectedCategory);
@@ -74,7 +80,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
     return result.sort((a, b) =>
       a.name.localeCompare(b.name, "es", { sensitivity: "base" }),
     );
-  }, [products, selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery, onlyAvailable]);
 
   // Paginated visible products
   const visibleProducts = useMemo(() => {
@@ -128,11 +134,33 @@ export const StoreView: React.FC<StoreViewProps> = ({
 
       {/* Search and Filters Bar */}
       <div className="bg-white p-3 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex-1">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
-          </div>
-          <button
+<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+  <div className="flex-1">
+    <SearchBar value={searchQuery} onChange={setSearchQuery} />
+  </div>
+
+  {/* Only available products toggle */}
+  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white shrink-0 cursor-pointer select-none group" title="Mostrar solo productos disponibles" onClick={() => setOnlyAvailable((prev) => !prev)}>
+    <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-600 transition-colors whitespace-nowrap">
+      Solo disponibles
+    </span>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={onlyAvailable}
+      onClick={(e) => {
+        e.stopPropagation();
+        setOnlyAvailable((prev) => !prev);
+      }}
+      className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 ${onlyAvailable ? "bg-emerald-600" : "bg-slate-300"}`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${onlyAvailable ? "translate-x-4" : "translate-x-0"}`}
+      />
+    </button>
+  </div>
+
+  <button
             onClick={onRefresh}
             disabled={isLoading}
             className="flex items-center justify-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all border border-slate-200 shrink-0"
