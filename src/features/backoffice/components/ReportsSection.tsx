@@ -25,7 +25,9 @@ import {
   Package,
   TrendingUp,
   Filter,
-  DollarSign
+  DollarSign,
+  X,
+  Maximize2
 } from 'lucide-react';
 
 interface ReportsSectionProps {
@@ -52,6 +54,8 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ orders, products
 
   const [paidStartDate, setPaidStartDate] = useState(thirtyDaysAgoISO);
   const [paidEndDate, setPaidEndDate] = useState(todayISO);
+
+  const [showStockChartModal, setShowStockChartModal] = useState(false);
 
   // ----------------------------------------------------
   // 1. REPORT: STOCK BY CATEGORY (Pie Chart)
@@ -308,9 +312,11 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ orders, products
                 </p>
               </div>
 
-              <div className="bg-emerald-50 px-4 py-2 rounded-2xl border border-emerald-200 text-right">
-                <span className="text-[10px] font-bold uppercase text-emerald-800 block">Stock Total Físico:</span>
-                <span className="text-xl font-black text-emerald-700">{totalStockSum} unidades</span>
+              <div className="flex items-center gap-2">
+                <div className="bg-emerald-50 px-4 py-2 rounded-2xl border border-emerald-200 text-right">
+                  <span className="text-[10px] font-bold uppercase text-emerald-800 block">Stock Total Físico:</span>
+                  <span className="text-xl font-black text-emerald-700">{totalStockSum} unidades</span>
+                </div>
               </div>
             </div>
 
@@ -321,33 +327,20 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ orders, products
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                 {/* Pie Chart Visualizer */}
-                <div className="lg:col-span-7 h-80 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={stockByCategoryData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={true}
-                        label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
-                        outerRadius={105}
-                        innerRadius={45}
-                        dataKey="value"
-                        paddingAngle={3}
-                      >
-                        {stockByCategoryData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: any) => [`${value} unidades en inventario`, 'Stock']}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <div className="lg:col-span-7 h-80 w-full flex items-center justify-center">
+                  <button
+                    onClick={() => setShowStockChartModal(true)}
+                    disabled={stockByCategoryData.length === 0}
+                    className="w-full h-full max-w-md flex flex-col items-center justify-center gap-3 bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl text-slate-600 hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
+                      <Maximize2 className="w-7 h-7" />
+                    </div>
+                    <span className="text-sm font-extrabold">Ver Gráfico</span>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      Haz clic para ver la distribución del stock en grande
+                    </span>
+                  </button>
                 </div>
 
                 {/* Detailed Table Breakdown */}
@@ -679,6 +672,67 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ orders, products
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Stock by Category Chart Modal */}
+      {showStockChartModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowStockChartModal(false)}>
+          <div
+            className="bg-white border border-slate-200 rounded-3xl w-full max-w-4xl p-5 sm:p-8 text-slate-900 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowStockChartModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-all"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <PieChartIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Existencia de Productos por Categoría
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Stock total físico: {totalStockSum} unidades
+                </p>
+              </div>
+            </div>
+
+            <div className="h-[480px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stockByCategoryData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
+                    outerRadius={160}
+                    innerRadius={70}
+                    dataKey="value"
+                    paddingAngle={3}
+                  >
+                    {stockByCategoryData.map((entry, index) => (
+                      <Cell
+                        key={`modal-cell-${index}`}
+                        fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: any) => [`${value} unidades en inventario`, 'Stock']}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       )}
