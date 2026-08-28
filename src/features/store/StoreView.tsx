@@ -143,39 +143,41 @@ export const StoreView: React.FC<StoreViewProps> = ({
     <SearchBar value={searchQuery} onChange={setSearchQuery} />
   </div>
 
-  {/* Only available products toggle */}
-  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white shrink-0 cursor-pointer select-none group" title="Mostrar solo productos disponibles" onClick={() => setOnlyAvailable((prev) => !prev)}>
-    <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-600 transition-colors whitespace-nowrap">
-      Mostrar disponibles
-    </span>
+  <div className="flex items-center justify-between gap-2 sm:gap-3 w-full sm:w-auto">
+    {/* Only available products toggle */}
+    <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white flex-1 sm:flex-none cursor-pointer select-none group" title="Mostrar solo productos disponibles" onClick={() => setOnlyAvailable((prev) => !prev)}>
+      <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-600 transition-colors whitespace-nowrap">
+        Mostrar disponibles
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={onlyAvailable}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOnlyAvailable((prev) => !prev);
+        }}
+        className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 ${onlyAvailable ? "bg-emerald-600" : "bg-slate-300"}`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${onlyAvailable ? "translate-x-4" : "translate-x-0"}`}
+        />
+      </button>
+    </div>
+
     <button
-      type="button"
-      role="switch"
-      aria-checked={onlyAvailable}
-      onClick={(e) => {
-        e.stopPropagation();
-        setOnlyAvailable((prev) => !prev);
-      }}
-      className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 ${onlyAvailable ? "bg-emerald-600" : "bg-slate-300"}`}
+      onClick={onRefresh}
+      disabled={isLoading}
+      className="flex items-center justify-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all border border-slate-200 shrink-0 whitespace-nowrap"
+      title="Actualizar catálogo"
     >
-      <span
-        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${onlyAvailable ? "translate-x-4" : "translate-x-0"}`}
+      <RefreshCw
+        className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? "animate-spin text-emerald-600" : ""}`}
       />
+      <span>Refrescar</span>
     </button>
   </div>
-
-  <button
-            onClick={onRefresh}
-            disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all border border-slate-200 shrink-0"
-            title="Actualizar catálogo"
-          >
-            <RefreshCw
-              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? "animate-spin text-emerald-600" : ""}`}
-            />
-            <span>Refrescar</span>
-          </button>
-        </div>
+</div>
 
         <div className="pt-2 border-t border-slate-100">
           <CategoryFilter
