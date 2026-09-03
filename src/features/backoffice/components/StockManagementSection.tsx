@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Product } from '../../../types';
 import { Edit, Trash2, Plus, Minus, Search, AlertCircle, Package, Loader2 } from 'lucide-react';
 import { EditProductModal } from './EditProductModal';
+import { DEFAULT_PRODUCT_IMAGE } from '../../../utils/productUtils';
 
 interface StockManagementSectionProps {
   products: Product[];
@@ -125,7 +126,7 @@ export const StockManagementSection: React.FC<StockManagementSectionProps> = ({
                   {visibleProducts.map(product => {
                     const isOutOfStock = product.stock <= 0;
                     const isLowStock = product.stock > 0 && product.stock <= 5;
-                    const image = product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+                    const image = product.images?.[0] || DEFAULT_PRODUCT_IMAGE;
 
                     return (
                       <tr key={product.id} className="hover:bg-slate-50/80 transition-colors">
@@ -137,7 +138,7 @@ export const StockManagementSection: React.FC<StockManagementSectionProps> = ({
                               alt={product.name}
                               className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+                                (e.target as HTMLImageElement).src = DEFAULT_PRODUCT_IMAGE;
                               }}
                             />
                             <div className="min-w-0">

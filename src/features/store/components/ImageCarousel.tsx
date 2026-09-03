@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { DEFAULT_PRODUCT_IMAGE } from '../../../utils/productUtils';
 
 interface ImageCarouselProps {
   images: string[];
@@ -9,7 +10,7 @@ interface ImageCarouselProps {
 export const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, altText }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const safeImages = images && images.length > 0 ? images : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80'];
+  const safeImages = images && images.length > 0 ? images : [DEFAULT_PRODUCT_IMAGE];
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -30,7 +31,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, altText })
           alt={`${altText} - Imagen ${currentIndex + 1}`}
           className="w-full h-full object-cover object-center transition-all duration-300"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+            (e.target as HTMLImageElement).src = DEFAULT_PRODUCT_IMAGE;
           }}
         />
 
@@ -79,7 +80,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, altText })
                 alt={`Miniatura ${idx + 1}`}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+                  (e.target as HTMLImageElement).src = DEFAULT_PRODUCT_IMAGE;
                 }}
               />
             </button>

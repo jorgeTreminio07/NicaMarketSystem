@@ -10,7 +10,11 @@ import {
   DollarSign,
   Package,
   FileText,
+  Upload,
+  Loader2,
 } from "lucide-react";
+import { uploadProductImage } from "../../../infrastructure/supabase/uploadImage";
+import { DEFAULT_PRODUCT_IMAGE } from "../../../utils/productUtils";
 
 interface AddProductSectionProps {
   onAddProduct: (
@@ -31,16 +35,40 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
   const [stock, setStock] = useState<number | string>(10);
   const [description, setDescription] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([
-    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+    DEFAULT_PRODUCT_IMAGE,
   ]);
   const [newUrlInput, setNewUrlInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleAddImageUrl = () => {
     if (newUrlInput.trim()) {
       setImageUrls((prev) => [...prev, newUrlInput.trim()]);
       setNewUrlInput("");
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const publicUrl = await uploadProductImage({
+        file,
+        onStatus: (status) => setUploadStatus(status),
+      });
+      setImageUrls((prev) => [...prev, publicUrl]);
+    } catch (err: any) {
+      setUploadError(err?.message || "No se pudo subir la imagen.");
+    } finally {
+      setIsUploading(false);
+      setUploadStatus(null);
     }
   };
 
@@ -79,9 +107,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
         images:
           imageUrls.length > 0
             ? imageUrls
-            : [
-                "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
-              ],
+            : [DEFAULT_PRODUCT_IMAGE],
       });
 
       setSuccessMessage(
@@ -97,7 +123,7 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
       setStock(10);
       setDescription("");
       setImageUrls([
-        "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+        DEFAULT_PRODUCT_IMAGE,
       ]);
     } catch (err) {
       console.error("Error al agregar el producto:", err);
@@ -277,6 +303,37 @@ export const AddProductSection: React.FC<AddProductSectionProps> = ({
                 <span>Agregar Foto</span>
               </button>
             </div>
+
+            <div className="flex items-center gap-2 px-1">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                o sube desde tu dispositivo
+              </span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+
+            <label className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all cursor-pointer">
+              <Upload className="w-4 h-4" />
+              <span>{isUploading ? (uploadStatus || "Subiendo...") : "Subir imagen"}</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                className="hidden"
+              />
+            </label>
+            {isUploading && (
+              <div className="flex items-center gap-2 px-1">
+                <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
+                <span className="text-xs text-slate-500">{uploadStatus || "Procesando..."}</span>
+              </div>
+            )}
+            {uploadError && (
+              <p className="text-xs font-semibold text-rose-600 flex items-center gap-1 px-1">
+                <span>⚠</span> {uploadError}
+              </p>
+            )}
 
             {/* List of Images */}
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 pt-2">

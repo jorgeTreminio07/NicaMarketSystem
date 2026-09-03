@@ -16,6 +16,7 @@ import {
   Check,
 } from "lucide-react";
 import { generateOrderWhatsAppUrl } from "../../utils/whatsapp";
+import { DEFAULT_PRODUCT_IMAGE } from "../../utils/productUtils";
 
 interface CartViewProps {
   items: CartItem[];
@@ -256,7 +257,7 @@ export const CartView: React.FC<CartViewProps> = ({
               {items.map((item) => {
                 const itemImage =
                   item.product.images?.[0] ||
-                  "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+                  DEFAULT_PRODUCT_IMAGE;
                 const effectiveUnitPrice = getItemEffectivePrice(item.product);
                 const hasDiscount = Boolean(
                   item.product.discountPercent &&
@@ -278,7 +279,7 @@ export const CartView: React.FC<CartViewProps> = ({
                           className="w-16 h-16 rounded-xl object-cover border border-slate-200"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src =
-                              "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+                              DEFAULT_PRODUCT_IMAGE;
                           }}
                         />
                         {hasDiscount && (
