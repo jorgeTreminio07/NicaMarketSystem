@@ -53,6 +53,7 @@ interface StoreSettings {
   description: string;
   logoUrl: string;
   whatsappNumber: string;
+  faviconUrl?: string;
   updatedAt?: string;
 }
 
@@ -478,6 +479,7 @@ export async function loadDataFromSupabase() {
         description: row.description || '',
         logoUrl: row.logo_url || row.logoUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
         whatsappNumber: row.whatsapp_number || row.whatsappNumber || '50589098184',
+        faviconUrl: row.favicon_url || row.faviconUrl || undefined,
         updatedAt: row.updated_at || new Date().toISOString()
       };
     } else {
@@ -489,6 +491,7 @@ export async function loadDataFromSupabase() {
           description: storeSettings.description,
           logo_url: storeSettings.logoUrl,
           whatsapp_number: storeSettings.whatsappNumber,
+          favicon_url: storeSettings.faviconUrl || null,
           updated_at: storeSettings.updatedAt
         }]);
       } catch (e) {
@@ -1237,6 +1240,7 @@ export function buildExpressApp(): express.Express {
             description: row.description || '',
             logoUrl: row.logo_url || row.logoUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
             whatsappNumber: row.whatsapp_number || row.whatsappNumber || '50589098184',
+            faviconUrl: row.favicon_url || row.faviconUrl || undefined,
             updatedAt: row.updated_at || new Date().toISOString()
           };
           lastSettingsFetchTime = now;
@@ -1249,11 +1253,12 @@ export function buildExpressApp(): express.Express {
   });
 
   app.put('/api/store-settings', async (req, res) => {
-    const { name, description, logoUrl, whatsappNumber } = req.body;
+    const { name, description, logoUrl, whatsappNumber, faviconUrl } = req.body;
     const targetName = name !== undefined ? String(name).trim() : storeSettings.name;
     const targetDescription = description !== undefined ? String(description).trim() : storeSettings.description;
     const targetLogoUrl = logoUrl !== undefined ? String(logoUrl).trim() : storeSettings.logoUrl;
     const targetWhatsappNumber = whatsappNumber !== undefined ? String(whatsappNumber).trim() : storeSettings.whatsappNumber;
+    const targetFaviconUrl = faviconUrl !== undefined ? String(faviconUrl).trim() : storeSettings.faviconUrl || null;
     const updatedAt = new Date().toISOString();
 
     try {
@@ -1263,6 +1268,7 @@ export function buildExpressApp(): express.Express {
         description: targetDescription,
         logo_url: targetLogoUrl,
         whatsapp_number: targetWhatsappNumber,
+        favicon_url: targetFaviconUrl,
         updated_at: updatedAt
       }]);
 
@@ -1274,6 +1280,7 @@ export function buildExpressApp(): express.Express {
           description: targetDescription,
           logo_url: targetLogoUrl,
           whatsapp_number: targetWhatsappNumber,
+          favicon_url: targetFaviconUrl,
           updated_at: updatedAt
         }).eq('id', 'default');
 
@@ -1297,6 +1304,7 @@ export function buildExpressApp(): express.Express {
       description: targetDescription,
       logoUrl: targetLogoUrl,
       whatsappNumber: targetWhatsappNumber,
+      faviconUrl: targetFaviconUrl || undefined,
       updatedAt
     };
     lastSettingsFetchTime = Date.now();

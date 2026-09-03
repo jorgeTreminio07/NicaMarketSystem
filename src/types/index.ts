@@ -70,6 +70,7 @@ export interface StoreSettings {
   description: string;
   logoUrl: string;
   whatsappNumber: string;
+  faviconUrl?: string;
   updatedAt?: string;
 }
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { StoreSettings } from '../../../types';
 import { getStoreSettings, updateStoreSettings } from '../../../infrastructure/api/apiClient';
-import { Store, Image as ImageIcon, Phone, FileText, Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Store, Image as ImageIcon, Upload, Phone, FileText, Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { uploadStoreLogo, uploadStoreFavicon } from '../../../infrastructure/supabase/uploadImage';
 
 interface StoreSettingsSectionProps {
   onSettingsUpdated?: (settings: StoreSettings) => void;
@@ -17,6 +18,12 @@ export const StoreSettingsSection: React.FC<StoreSettingsSectionProps> = ({ onSe
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+  const [uploadFaviconStatus, setUploadFaviconStatus] = useState<string | null>(null);
+  const [uploadFaviconError, setUploadFaviconError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -31,6 +38,52 @@ export const StoreSettingsSection: React.FC<StoreSettingsSectionProps> = ({ onSe
       console.error('Error cargando configuración:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const publicUrl = await uploadStoreLogo({
+        file,
+        onStatus: (status) => setUploadStatus(status),
+      });
+      setSettings((prev) => ({ ...prev, logoUrl: publicUrl }));
+      setMessage({ type: 'success', text: '¡Logo subido correctamente! Guarda los cambios para aplicarlo.' });
+      setTimeout(() => setMessage(null), 4000);
+    } catch (err: any) {
+      setUploadError(err?.message || 'No se pudo subir el logo.');
+    } finally {
+      setIsUploading(false);
+      setUploadStatus(null);
+    }
+  };
+
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setIsUploadingFavicon(true);
+    setUploadFaviconError(null);
+    try {
+      const publicUrl = await uploadStoreFavicon({
+        file,
+        onStatus: (status) => setUploadFaviconStatus(status),
+      });
+      setSettings((prev) => ({ ...prev, faviconUrl: publicUrl }));
+      setMessage({ type: 'success', text: '¡Favicon subido correctamente! Guarda los cambios para aplicarlo.' });
+      setTimeout(() => setMessage(null), 4000);
+    } catch (err: any) {
+      setUploadFaviconError(err?.message || 'No se pudo subir el favicon.');
+    } finally {
+      setIsUploadingFavicon(false);
+      setUploadFaviconStatus(null);
     }
   };
 
@@ -159,13 +212,78 @@ export const StoreSettingsSection: React.FC<StoreSettingsSectionProps> = ({ onSe
               <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
               <span>URL del Logo / Imagen de la Tienda</span>
             </label>
-            <input
-              type="url"
-              value={settings.logoUrl}
-              onChange={e => setSettings({ ...settings, logoUrl: e.target.value })}
-              placeholder="https://..."
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
-            />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="url"
+                value={settings.logoUrl}
+                onChange={e => setSettings({ ...settings, logoUrl: e.target.value })}
+                placeholder="https://..."
+                className="flex-1 w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+              />
+              <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                <Upload className="w-4 h-4" />
+                <span>{isUploading ? (uploadStatus || "Subiendo...") : "Subir foto"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  disabled={isUploading}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            {isUploading && (
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
+                <span className="text-xs text-slate-500">{uploadStatus || "Procesando..."}</span>
+              </div>
+            )}
+            {uploadError && (
+              <p className="text-xs font-semibold text-rose-600 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                {uploadError}
+              </p>
+            )}
+          </div>
+
+          {/* Favicon URL */}
+          <div className="md:col-span-2 space-y-1.5">
+            <label className="block text-xs font-bold uppercase text-slate-700 flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Icono de pestaña</span>
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="url"
+                value={settings.faviconUrl || ''}
+                onChange={e => setSettings({ ...settings, faviconUrl: e.target.value })}
+                placeholder="https://... (opcional)"
+                className="flex-1 w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+              />
+              <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                <Upload className="w-4 h-4" />
+                <span>{isUploadingFavicon ? (uploadFaviconStatus || "Subiendo...") : "Subir foto"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFaviconUpload}
+                  disabled={isUploadingFavicon}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            {isUploadingFavicon && (
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
+                <span className="text-xs text-slate-500">{uploadFaviconStatus || "Procesando..."}</span>
+              </div>
+            )}
+            {uploadFaviconError && (
+              <p className="text-xs font-semibold text-rose-600 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                {uploadFaviconError}
+              </p>
+            )}
           </div>
 
           {/* Store Description */}

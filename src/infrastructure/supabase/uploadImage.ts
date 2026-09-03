@@ -5,6 +5,41 @@ export const PRODUCT_IMAGES_BUCKET = "product-images";
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_DIMENSION = 1600;
 
+interface UploadOptions {
+  file: File;
+  bucket: string;
+  path: string;
+  onStatus?: (status: string) => void;
+}
+
+async function uploadToStorage({ file, bucket, path, onStatus }: UploadOptions): Promise<string> {
+  if (!supabase) {
+    throw new Error("Supabase no está configurado.");
+  }
+
+  onStatus?.("Comprimiendo imagen...");
+  const compressed = await compressImage(file);
+
+  onStatus?.("Subiendo a la nube...");
+
+  const { error } = await supabase.storage.from(bucket).upload(path, compressed, {
+    contentType: "image/jpeg",
+    upsert: true,
+  });
+
+  if (error) {
+    console.error("Error en uploadToStorage:", error);
+    throw new Error(
+      (error.message || "No se pudo subir la imagen.") +
+        " Verifica que el bucket '" +
+        bucket +
+        "' exista y permita subidas públicas."
+    );
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+}
+
 function loadImage(source: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(source);
@@ -69,34 +104,25 @@ export async function compressImage(file: File): Promise<Blob> {
 export async function uploadProductImage(options: { file: File; onStatus?: (status: string) => void }): Promise<string> {
   const { file, onStatus } = options;
 
-  if (!supabase) {
-    throw new Error("Supabase no está configurado.");
-  }
-
-  onStatus?.("Comprimiendo imagen...");
-  const compressed = await compressImage(file);
-
-  onStatus?.("Subiendo a la nube...");
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "imagen";
   const extension = safeName.includes(".") ? safeName.split(".").pop() : "jpg";
   const path = `product-${crypto.randomUUID()}.${extension}`;
 
-  const { error } = await supabase.storage
-    .from(PRODUCT_IMAGES_BUCKET)
-    .upload(path, compressed, {
-      contentType: "image/jpeg",
-      upsert: false,
-    });
+  return uploadToStorage({ file, bucket: PRODUCT_IMAGES_BUCKET, path, onStatus });
+}
 
-  if (error) {
-    console.error("Error en uploadProductImage:", error);
-    throw new Error(
-      (error.message || "No se pudo subir la imagen.") +
-        " Verifica que el bucket '" +
-        PRODUCT_IMAGES_BUCKET +
-        "' exista y permita subidas públicas."
-    );
-  }
+export async function uploadStoreLogo(options: { file: File; onStatus?: (status: string) => void }): Promise<string> {
+  const { file, onStatus } = options;
 
-  return `${SUPABASE_URL}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/${path}`;
+  const path = `logo-${crypto.randomUUID()}.jpg`;
+
+  return uploadToStorage({ file, bucket: PRODUCT_IMAGES_BUCKET, path, onStatus });
+}
+
+export async function uploadStoreFavicon(options: { file: File; onStatus?: (status: string) => void }): Promise<string> {
+  const { file, onStatus } = options;
+
+  const path = `favicon-${crypto.randomUUID()}.jpg`;
+
+  return uploadToStorage({ file, bucket: PRODUCT_IMAGES_BUCKET, path, onStatus });
 }
