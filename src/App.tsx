@@ -171,6 +171,35 @@ export default function App() {
     }
   }, [cartItems]);
 
+  // Update browser tab title with the store name from settings
+  useEffect(() => {
+    const storeName =
+      storeSettings?.name && storeSettings.name.trim()
+        ? storeSettings.name
+        : "NicaMarket";
+    document.title = `${storeName} - Exclusivo para Clientes`;
+  }, [storeSettings]);
+
+  // Update browser tab favicon with the configured favicon photo
+  useEffect(() => {
+    const setFavicon = (href: string) => {
+      const link: HTMLLinkElement | null = document.querySelector(
+        'link[rel="icon"]',
+      );
+      const apple: HTMLLinkElement | null = document.querySelector(
+        'link[rel="apple-touch-icon"]',
+      );
+      if (link) link.href = href;
+      if (apple) apple.href = href;
+    };
+
+    if (storeSettings?.faviconUrl && storeSettings.faviconUrl.trim()) {
+      setFavicon(storeSettings.faviconUrl.trim());
+    } else {
+      setFavicon("/favicon.svg");
+    }
+  }, [storeSettings]);
+
   // Load products and orders with support for silent background updates
   const refreshData = useCallback(
     async (silent = false) => {
@@ -590,6 +619,7 @@ export default function App() {
         onOpenCart={() => setActiveTab("cart")}
         isAdmin={isAdmin}
         onExitAdmin={handleExitAdmin}
+        storeSettings={storeSettings}
       />
 
       {/* Main View Area */}

@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ShieldCheck,
 } from "lucide-react";
+import { StoreSettings } from "../types";
 
 interface NavbarProps {
   activeTab: "store" | "backoffice";
@@ -15,6 +16,7 @@ interface NavbarProps {
   onOpenCart: () => void;
   isAdmin: boolean;
   onExitAdmin?: () => void;
+  storeSettings?: StoreSettings;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -24,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCart,
   isAdmin,
   onExitAdmin,
+  storeSettings,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-slate-100 shadow-md">
@@ -55,12 +58,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={() => onSelectTab("store")}
           className="flex items-center gap-2.5 cursor-pointer group"
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-            <ShoppingBag className="w-5 h-5 text-slate-950" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform overflow-hidden">
+            {storeSettings?.logoUrl ? (
+              <img
+                src={storeSettings.logoUrl}
+                alt={storeSettings.name || "Logo"}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ) : (
+              <ShoppingBag className="w-5 h-5 text-slate-950" />
+            )}
           </div>
           <div>
             <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              NicaMarket
+              {storeSettings?.name || "NicaMarket"}
             </span>
             <span className="hidden sm:inline-block text-xs text-emerald-400 ml-2 font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
               {activeTab === "backoffice"
