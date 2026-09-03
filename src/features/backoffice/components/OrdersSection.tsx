@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Order, OrderItem, Product, PaymentType } from "../../../types";
+import { Order, OrderItem, Product, PaymentType, StoreSettings } from "../../../types";
 import {
   CheckCircle2,
   XCircle,
@@ -25,6 +25,7 @@ import {
 interface OrdersSectionProps {
   orders: Order[];
   products: Product[];
+  storeSettings?: StoreSettings;
   onApproveOrder: (orderId: string, paymentType?: PaymentType) => Promise<void>;
   onRejectOrder: (orderId: string) => Promise<void>;
   onDeleteOrder: (orderId: string) => Promise<void>;
@@ -38,6 +39,7 @@ interface OrdersSectionProps {
 export const OrdersSection: React.FC<OrdersSectionProps> = ({
   orders,
   products,
+  storeSettings,
   onApproveOrder,
   onRejectOrder,
   onDeleteOrder,
@@ -166,7 +168,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
         paymentType: paymentTypeToUse,
         status: "Aprobado",
       };
-      const whatsappUrl = generateApprovalWhatsAppUrl(updatedOrder);
+      const whatsappUrl = generateApprovalWhatsAppUrl(updatedOrder, storeSettings?.bankAccounts);
       window.open(whatsappUrl, "_blank");
       setSelectedOrderForModal(null);
     } catch (err) {
@@ -781,6 +783,7 @@ export const OrdersSection: React.FC<OrdersSectionProps> = ({
                               selectedOrderForModal.status === "Aprobado"
                                 ? generateApprovalWhatsAppUrl(
                                     selectedOrderForModal,
+                                    storeSettings?.bankAccounts,
                                   )
                                 : generateRejectionWhatsAppUrl(
                                     selectedOrderForModal,

@@ -671,6 +671,7 @@ export default function App() {
             <BackofficeView
               currentUser={currentUser}
               isAdmin={isAdmin}
+              storeSettings={storeSettings}
               products={products}
               orders={orders}
               onApproveOrder={handleApproveOrder}

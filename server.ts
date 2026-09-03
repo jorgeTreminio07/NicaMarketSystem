@@ -47,6 +47,14 @@ interface Order {
   isDeleted?: boolean;
 }
 
+interface BankAccount {
+  id: string;
+  bankName: string;
+  currency: string;
+  accountNumber: string;
+  holder: string;
+}
+
 interface StoreSettings {
   id: string;
   name: string;
@@ -54,6 +62,7 @@ interface StoreSettings {
   logoUrl: string;
   whatsappNumber: string;
   faviconUrl?: string;
+  bankAccounts?: BankAccount[];
   updatedAt?: string;
 }
 
@@ -480,6 +489,7 @@ export async function loadDataFromSupabase() {
         logoUrl: row.logo_url || row.logoUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
         whatsappNumber: row.whatsapp_number || row.whatsappNumber || '50589098184',
         faviconUrl: row.favicon_url || row.faviconUrl || undefined,
+        bankAccounts: Array.isArray(row.bank_accounts) ? row.bank_accounts : Array.isArray(row.bankAccounts) ? row.bankAccounts : undefined,
         updatedAt: row.updated_at || new Date().toISOString()
       };
     } else {
@@ -492,6 +502,7 @@ export async function loadDataFromSupabase() {
           logo_url: storeSettings.logoUrl,
           whatsapp_number: storeSettings.whatsappNumber,
           favicon_url: storeSettings.faviconUrl || null,
+          bank_accounts: storeSettings.bankAccounts || null,
           updated_at: storeSettings.updatedAt
         }]);
       } catch (e) {
@@ -1241,6 +1252,7 @@ export function buildExpressApp(): express.Express {
             logoUrl: row.logo_url || row.logoUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
             whatsappNumber: row.whatsapp_number || row.whatsappNumber || '50589098184',
             faviconUrl: row.favicon_url || row.faviconUrl || undefined,
+            bankAccounts: Array.isArray(row.bank_accounts) ? row.bank_accounts : Array.isArray(row.bankAccounts) ? row.bankAccounts : undefined,
             updatedAt: row.updated_at || new Date().toISOString()
           };
           lastSettingsFetchTime = now;
@@ -1253,12 +1265,13 @@ export function buildExpressApp(): express.Express {
   });
 
   app.put('/api/store-settings', async (req, res) => {
-    const { name, description, logoUrl, whatsappNumber, faviconUrl } = req.body;
+    const { name, description, logoUrl, whatsappNumber, faviconUrl, bankAccounts } = req.body;
     const targetName = name !== undefined ? String(name).trim() : storeSettings.name;
     const targetDescription = description !== undefined ? String(description).trim() : storeSettings.description;
     const targetLogoUrl = logoUrl !== undefined ? String(logoUrl).trim() : storeSettings.logoUrl;
     const targetWhatsappNumber = whatsappNumber !== undefined ? String(whatsappNumber).trim() : storeSettings.whatsappNumber;
     const targetFaviconUrl = faviconUrl !== undefined ? String(faviconUrl).trim() : storeSettings.faviconUrl || null;
+    const targetBankAccounts = bankAccounts !== undefined ? bankAccounts : storeSettings.bankAccounts;
     const updatedAt = new Date().toISOString();
 
     try {
@@ -1269,6 +1282,7 @@ export function buildExpressApp(): express.Express {
         logo_url: targetLogoUrl,
         whatsapp_number: targetWhatsappNumber,
         favicon_url: targetFaviconUrl,
+        bank_accounts: targetBankAccounts || null,
         updated_at: updatedAt
       }]);
 
@@ -1281,6 +1295,7 @@ export function buildExpressApp(): express.Express {
           logo_url: targetLogoUrl,
           whatsapp_number: targetWhatsappNumber,
           favicon_url: targetFaviconUrl,
+          bank_accounts: targetBankAccounts || null,
           updated_at: updatedAt
         }).eq('id', 'default');
 
@@ -1305,6 +1320,7 @@ export function buildExpressApp(): express.Express {
       logoUrl: targetLogoUrl,
       whatsappNumber: targetWhatsappNumber,
       faviconUrl: targetFaviconUrl || undefined,
+      bankAccounts: targetBankAccounts || undefined,
       updatedAt
     };
     lastSettingsFetchTime = Date.now();

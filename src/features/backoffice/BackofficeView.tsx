@@ -39,6 +39,7 @@ import {
 interface BackofficeViewProps {
   currentUser?: BackofficeUser | null;
   isAdmin?: boolean;
+  storeSettings?: StoreSettings;
   products: Product[];
   orders: Order[];
   onApproveOrder: (orderId: string, paymentType?: PaymentType) => Promise<void>;
@@ -71,6 +72,7 @@ type SubTabId =
 export const BackofficeView: React.FC<BackofficeViewProps> = ({
   currentUser,
   isAdmin,
+  storeSettings,
   products,
   orders,
   onApproveOrder,
@@ -376,6 +378,7 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
           <OrdersSection
             orders={orders}
             products={products}
+            storeSettings={storeSettings}
             onApproveOrder={onApproveOrder}
             onRejectOrder={onRejectOrder}
             onDeleteOrder={onDeleteOrder}
@@ -388,6 +391,7 @@ export const BackofficeView: React.FC<BackofficeViewProps> = ({
           <CreditManagementSection
             orders={orders}
             products={products}
+            storeSettings={storeSettings}
             onRefresh={onRefresh}
             isLoading={isLoading}
           />
