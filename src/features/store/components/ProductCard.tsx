@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingCart, Eye, Check, AlertTriangle, Sparkles } from 'lucide-react';
 import { Product } from '../../../types';
-import { isRecentlyAdded } from '../../../utils/productUtils';
+import { isRecentlyAdded, DEFAULT_PRODUCT_IMAGE } from '../../../utils/productUtils';
 
 interface ProductCardProps {
   product: Product;
@@ -18,7 +18,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const isOutOfStock = product.stock <= 0;
   const isRecentlyAddedBadge = isRecentlyAdded(product.createdAt);
-  const primaryImage = product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+  const primaryImage = product.images?.[0] || DEFAULT_PRODUCT_IMAGE;
   const hasDiscount = Boolean(product.discountPercent && product.discountPercent > 0);
   const discountedPrice = hasDiscount 
     ? product.price * (1 - (product.discountPercent! / 100))
@@ -36,7 +36,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           alt={product.name}
           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+            (e.target as HTMLImageElement).src = DEFAULT_PRODUCT_IMAGE;
           }}
         />
 

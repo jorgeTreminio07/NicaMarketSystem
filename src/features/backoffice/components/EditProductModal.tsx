@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Product } from '../../../types';
-import { X, Save, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
+import { X, Save, Image as ImageIcon, Plus, Trash2, Upload, Loader2 } from 'lucide-react';
+import { uploadProductImage } from '../../../infrastructure/supabase/uploadImage';
+import { DEFAULT_PRODUCT_IMAGE } from '../../../utils/productUtils';
 
 interface EditProductModalProps {
   product: Product | null;
@@ -22,6 +24,9 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   const [images, setImages] = useState<string[]>([]);
   const [newImageUrl, setNewImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (product) {
@@ -46,6 +51,27 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
 
   const handleRemoveImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const publicUrl = await uploadProductImage({
+        file,
+        onStatus: (status) => setUploadStatus(status),
+      });
+      setImages(prev => [...prev, publicUrl]);
+    } catch (err: any) {
+      setUploadError(err?.message || "No se pudo subir la imagen.");
+    } finally {
+      setIsUploading(false);
+      setUploadStatus(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,20 +230,60 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
               </button>
             </div>
 
+            <div className="flex items-center gap-2 px-1 mb-1">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                o sube desde tu dispositivo
+              </span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+
+            <label className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all cursor-pointer">
+              <Upload className="w-3.5 h-3.5" />
+              <span>{isUploading ? (uploadStatus || "Subiendo...") : "Subir imagen "}</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                className="hidden"
+              />
+            </label>
+            {isUploading && (
+              <div className="flex items-center gap-2 px-1">
+                <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
+                <span className="text-xs text-slate-500">{uploadStatus || "Procesando..."}</span>
+              </div>
+            )}
+            {uploadError && (
+              <p className="text-xs font-semibold text-rose-600 flex items-center gap-1 px-1">
+                <span>⚠</span> {uploadError}
+              </p>
+            )}
+
             {/* Existing Images Thumbnails */}
             <div className="flex flex-wrap gap-2 pt-1">
-              {images.map((url, idx) => (
-                <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 group">
-                  <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImage(idx)}
-                    className="absolute inset-0 bg-rose-900/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+              {images.length === 0 ? (
+                <div className="flex items-center gap-2 w-40 h-16 rounded-xl overflow-hidden border border-dashed border-slate-300 bg-slate-50 p-1">
+                  <img src={DEFAULT_PRODUCT_IMAGE} alt="Imagen por defecto" className="w-14 h-14 rounded-lg object-cover" />
+                  <span className="text-[10px] text-slate-500 font-medium leading-tight">
+                    Sin imágenes. Se usará la imagen por defecto.
+                  </span>
                 </div>
-              ))}
+              ) : (
+                images.map((url, idx) => (
+                  <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 group">
+                    <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute inset-0 bg-rose-900/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
