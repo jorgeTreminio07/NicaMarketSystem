@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Order, Product } from "../../../types";
+import { Order, Product, StoreSettings } from "../../../types";
 import { orderRepository } from "../../../infrastructure/api/apiClient";
 import {
   CreditCard,
@@ -29,13 +29,14 @@ import { generateOverduePaymentReminderUrl } from "../../../utils/whatsapp";
 interface CreditManagementSectionProps {
   orders: Order[];
   products?: Product[];
+  storeSettings?: StoreSettings;
   onRefresh: () => void;
   isLoading: boolean;
 }
 
 export const CreditManagementSection: React.FC<
   CreditManagementSectionProps
-> = ({ orders, products = [], onRefresh, isLoading }) => {
+> = ({ orders, products = [], storeSettings, onRefresh, isLoading }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "Todos" | "En Proceso" | "Pagado" | "En Mora"
@@ -650,7 +651,7 @@ export const CreditManagementSection: React.FC<
 
                   {isEnMora && !isPagado && (
                     <a
-                      href={generateOverduePaymentReminderUrl(order)}
+                      href={generateOverduePaymentReminderUrl(order, storeSettings?.bankAccounts)}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}

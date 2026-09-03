@@ -1,4 +1,21 @@
-import { CartItem, Order, PaymentType } from '../types';
+import { BankAccount, CartItem, Order, PaymentType } from '../types';
+
+export function formatBankAccountsText(bankAccounts?: BankAccount[]): string {
+  if (!bankAccounts || bankAccounts.length === 0) return '';
+  const valid = bankAccounts.filter(
+    (a) => a.bankName?.trim() || a.accountNumber?.trim()
+  );
+  if (valid.length === 0) return '';
+  return valid
+    .map((a) => {
+      let line = `*${a.bankName || 'Banco'}*`;
+      if (a.currency?.trim()) line += ` (${a.currency.trim()})`;
+      line += `: ${a.accountNumber || '—'}`;
+      if (a.holder?.trim()) line += `\n  *Titular:* ${a.holder.trim()}`;
+      return line;
+    })
+    .join('\n');
+}
 
 export const STORE_WHATSAPP_NUMBER = '50589098184';
 
@@ -62,7 +79,7 @@ export function generateOrderWhatsAppUrl(
   return `https://wa.me/${destPhone}?text=${encodeURIComponent(text)}`;
 }
 
-export function generateApprovalWhatsAppUrl(order: Order): string {
+export function generateApprovalWhatsAppUrl(order: Order, bankAccounts?: BankAccount[]): string {
   const customerPhoneClean = sanitizePhoneNumber(order.customerPhone);
   const solicitudNum = order.orderNumber || order.id.slice(0, 8);
   const paymentType = order.paymentType || 'contado';
@@ -116,10 +133,10 @@ export function generateApprovalWhatsAppUrl(order: Order): string {
   // Cash or Bank transfer payment details
   text += `\n*Métodos de Pago Aceptados:*\n`;
   text += `Puede realizar su pago en efectivo o mediante transferencia bancaria a las siguientes cuentas:\n\n`;
-  text += `*Lafise C$:* 138028153\n`;
-  text += `*Lafise USD:* 131255322\n`;
-  text += `*Billetera móvil Banpro:* 89061446\n`;
-  text += `*Titular:* Patricia de los Angeles Ruiz Sarria\n\n`;
+  const bankText = formatBankAccountsText(bankAccounts);
+  if (bankText) {
+    text += `${bankText}\n\n`;
+  }
   text += `Estamos coordinando la entrega de sus productos. Gracias por preferirnos.`;
 
   return `https://wa.me/${customerPhoneClean}?text=${encodeURIComponent(text)}`;
@@ -137,7 +154,7 @@ export function generateRejectionWhatsAppUrl(order: Order): string {
   return `https://wa.me/${customerPhoneClean}?text=${encodeURIComponent(text)}`;
 }
 
-export function generateOverduePaymentReminderUrl(order: Order): string {
+export function generateOverduePaymentReminderUrl(order: Order, bankAccounts?: BankAccount[]): string {
   const customerPhoneClean = sanitizePhoneNumber(order.customerPhone);
   const solicitudNum = order.orderNumber || order.id.slice(0, 8);
   const today = new Date().toISOString().split('T')[0];
@@ -181,11 +198,11 @@ export function generateOverduePaymentReminderUrl(order: Order): string {
   }
 
   text += `\n*Métodos de Pago:*\n`;
-  text += `Lafise C$: 138028153\n`;
-  text += `Lafise USD: 131255322\n`;
-  text += `Billetera móvil Banpro: 89061446\n`;
-  text += `Titular: Patricia de los Angeles Ruiz Sarria\n\n`;
-  text += `Agradecemos regularizar su situación a la brevedad. Gracias.`;
+  const bankText = formatBankAccountsText(bankAccounts);
+  if (bankText) {
+    text += `${bankText}\n`;
+  }
+  text += `\nAgradecemos regularizar su situación a la brevedad. Gracias.`;
 
   return `https://wa.me/${customerPhoneClean}?text=${encodeURIComponent(text)}`;
 }

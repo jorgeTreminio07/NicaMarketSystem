@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { StoreSettings } from '../../../types';
+import { BankAccount, StoreSettings } from '../../../types';
 import { getStoreSettings, updateStoreSettings } from '../../../infrastructure/api/apiClient';
-import { Store, Image as ImageIcon, Upload, Phone, FileText, Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Store, Image as ImageIcon, Upload, Phone, FileText, Save, Loader2, CheckCircle2, AlertCircle, Landmark, Plus, Trash2, Pencil, X } from 'lucide-react';
 import { uploadStoreLogo, uploadStoreFavicon } from '../../../infrastructure/supabase/uploadImage';
+
+const CURRENCY_OPTIONS = ['C$', 'USD', 'Billetera Móvil', 'Otra'];
+
+const newBankAccount = (): BankAccount => ({
+  id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random()),
+  bankName: '',
+  currency: 'C$',
+  accountNumber: '',
+  holder: '',
+});
 
 interface StoreSettingsSectionProps {
   onSettingsUpdated?: (settings: StoreSettings) => void;
@@ -24,6 +34,61 @@ export const StoreSettingsSection: React.FC<StoreSettingsSectionProps> = ({ onSe
   const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
   const [uploadFaviconStatus, setUploadFaviconStatus] = useState<string | null>(null);
   const [uploadFaviconError, setUploadFaviconError] = useState<string | null>(null);
+  const [bankModal, setBankModal] = useState<{ isOpen: boolean; draft: BankAccount; editingId?: string }>({
+    isOpen: false,
+    draft: newBankAccount(),
+  });
+  const [isSavingBank, setIsSavingBank] = useState(false);
+
+  const openAddBankAccount = () => {
+    setBankModal({ isOpen: true, draft: newBankAccount() });
+  };
+
+  const openEditBankAccount = (acc: BankAccount) => {
+    setBankModal({ isOpen: true, draft: { ...acc }, editingId: acc.id });
+  };
+
+  const persistBankAccounts = async (nextBankAccounts: BankAccount[]) => {
+    setIsSavingBank(true);
+    setMessage(null);
+    try {
+      const updated = await updateStoreSettings({ ...settings, bankAccounts: nextBankAccounts });
+      setSettings(updated);
+      if (onSettingsUpdated) onSettingsUpdated(updated);
+      setMessage({ type: 'success', text: 'Cuenta Registrada Correctamente.' });
+      setTimeout(() => setMessage(null), 3000);
+      return true;
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Error al guardar la cuenta',
+      });
+      return false;
+    } finally {
+      setIsSavingBank(false);
+    }
+  };
+
+  const saveBankAccount = async () => {
+    const bankAccounts = settings.bankAccounts || [];
+    let nextBankAccounts: BankAccount[];
+    if (bankModal.editingId) {
+      nextBankAccounts = bankAccounts.map((a) =>
+        a.id === bankModal.editingId ? { ...bankModal.draft } : a,
+      );
+    } else {
+      nextBankAccounts = [...bankAccounts, { ...bankModal.draft }];
+    }
+    const ok = await persistBankAccounts(nextBankAccounts);
+    if (ok) {
+      setBankModal({ isOpen: false, draft: newBankAccount() });
+    }
+  };
+
+  const removeBankAccount = async (id: string) => {
+    const nextBankAccounts = (settings.bankAccounts || []).filter((a) => a.id !== id);
+    await persistBankAccounts(nextBankAccounts);
+  };
 
   useEffect(() => {
     loadSettings();
@@ -302,6 +367,70 @@ export const StoreSettingsSection: React.FC<StoreSettingsSectionProps> = ({ onSe
           </div>
         </div>
 
+        {/* Bank Accounts */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Landmark className="w-4 h-4 text-emerald-600" />
+              <h3 className="text-sm font-extrabold text-slate-900">Datos Bancarios</h3>
+            </div>
+            <button
+              type="button"
+              onClick={openAddBankAccount}
+              className="px-3 py-2 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Agregar cuenta</span>
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Estas cuentas aparecerán en los mensajes de aprobación y recordatorios de pago por WhatsApp. Haz clic en "Agregar cuenta" para registrarla.
+          </p>
+
+          {(settings.bankAccounts || []).length === 0 ? (
+            <p className="text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl p-4 text-center">
+              No hay cuentas configuradas. Los mensajes omitirán la sección de transferencia bancaria.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {settings.bankAccounts!.map((acc) => (
+                <div
+                  key={acc.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate">
+                      {acc.bankName || 'Banco'} {acc.currency ? `(${acc.currency})` : ''}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {acc.accountNumber || 'Sin número'}
+                      {acc.holder ? ` · ${acc.holder}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openEditBankAccount(acc)}
+                      title="Editar cuenta"
+                      className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeBankAccount(acc.id)}
+                      title="Eliminar cuenta"
+                      className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="pt-4 border-t border-slate-100 flex justify-end">
           <button
             type="submit"
@@ -322,6 +451,115 @@ export const StoreSettingsSection: React.FC<StoreSettingsSectionProps> = ({ onSe
           </button>
         </div>
       </form>
+
+      {/* Bank Account Modal */}
+      {bankModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setBankModal({ isOpen: false, draft: newBankAccount() })}
+          />
+          <div className="relative bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-extrabold text-slate-900">
+                {bankModal.editingId ? 'Editar cuenta' : 'Agregar cuenta'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setBankModal({ isOpen: false, draft: newBankAccount() })}
+                className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase text-slate-700">
+                  <span>Banco</span>
+                </label>
+                <input
+                  type="text"
+                  value={bankModal.draft.bankName}
+                  onChange={e => setBankModal({ ...bankModal, draft: { ...bankModal.draft, bankName: e.target.value } })}
+                  placeholder="Ej. Lafise"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase text-slate-700">
+                    <span>Moneda</span>
+                  </label>
+                  <select
+                    value={bankModal.draft.currency}
+                    onChange={e => setBankModal({ ...bankModal, draft: { ...bankModal.draft, currency: e.target.value } })}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                  >
+                    {CURRENCY_OPTIONS.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase text-slate-700">
+                    <span>Número de cuenta</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={bankModal.draft.accountNumber}
+                    onChange={e => setBankModal({ ...bankModal, draft: { ...bankModal.draft, accountNumber: e.target.value } })}
+                    placeholder="Ej. 123456789"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase text-slate-700">
+                  <span>Titular</span>
+                </label>
+                <input
+                  type="text"
+                  value={bankModal.draft.holder}
+                  onChange={e => setBankModal({ ...bankModal, draft: { ...bankModal.draft, holder: e.target.value } })}
+                  placeholder="Nombre del titular"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setBankModal({ isOpen: false, draft: newBankAccount() })}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveBankAccount}
+                disabled={isSavingBank}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center gap-2"
+              >
+                {isSavingBank ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>Guardar</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

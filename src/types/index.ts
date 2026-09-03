@@ -64,6 +64,14 @@ export interface CartItem {
 
 export type CategoryFilter = string;
 
+export interface BankAccount {
+  id: string;
+  bankName: string;
+  currency: string;
+  accountNumber: string;
+  holder: string;
+}
+
 export interface StoreSettings {
   id?: string;
   name: string;
@@ -71,6 +79,7 @@ export interface StoreSettings {
   logoUrl: string;
   whatsappNumber: string;
   faviconUrl?: string;
+  bankAccounts?: BankAccount[];
   updatedAt?: string;
 }
 
